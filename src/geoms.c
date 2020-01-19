@@ -3,7 +3,6 @@
 #include <math.h>
 #include <limits.h>
 
-#include <utils/geo_decls.h>
 
 #include "lwgeom_log.h"
 #include "geoms.h"
@@ -43,6 +42,12 @@ lwfreeor lwfree_var = default_freeor;
  * along with stdout/stderr since this is the most common use case
  *
  */
+
+static void
+default_freeor(void *mem)
+{
+    free(mem);
+}
 
 static void *
 default_allocator(size_t size)
@@ -85,14 +90,14 @@ void *
 lwalloc(size_t size)
 {
     void *mem = lwalloc_var(size);
-    //LWDEBUGF(5, "lwalloc: %d@%p", size, mem);
+    LWDEBUGF(5, "lwalloc: %d@%p", size, mem);
     return mem;
 }
 
 void *
 lwrealloc(void *mem, size_t size)
 {
-    //LWDEBUGF(5, "lwrealloc: %d@%p", size, mem);
+    LWDEBUGF(5, "lwrealloc: %d@%p", size, mem);
     return lwrealloc_var(mem, size);
 }
 
@@ -792,7 +797,7 @@ LWGEOM* lwgeom_from_wkb_state(wkb_parse_state *s)
             break;
 
         case CURVEPOLYTYPE:
-            return (LWGEOM*)lwcurvepoly_from_wkb_state(s);
+            //return (LWGEOM*)lwcurvepoly_from_wkb_state(s);
             break;
         case MULTIPOINTTYPE:
         case MULTILINETYPE:
@@ -803,7 +808,7 @@ LWGEOM* lwgeom_from_wkb_state(wkb_parse_state *s)
         case POLYHEDRALSURFACETYPE:
         case TINTYPE:
         case COLLECTIONTYPE:
-            return (LWGEOM*)lwcollection_from_wkb_state(s);
+            //return (LWGEOM*)lwcollection_from_wkb_state(s);
             break;
         case LINETYPE:
             //return (LWGEOM*)lwline_from_wkb_state(s);

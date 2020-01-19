@@ -141,9 +141,6 @@ typedef void (*lwreporter)(const char* fmt, va_list ap)
 typedef void (*lwdebuglogger)(int level, const char* fmt, va_list ap)
         __attribute__ (( format(printf, 2,0) ));
 
-/* Default logger */
-static void default_debuglogger(int level, const char *fmt, va_list ap);
-lwdebuglogger lwdebug_var = default_debuglogger;
 
 #define LW_MSG_MAXLEN 256
 

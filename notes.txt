@@ -21,6 +21,7 @@ ALTER USER xun WITH SUPERUSER;
 * Test
 
 sudo su - postgres -c "psql -f /home/xun/Downloads/postgeoda/test/test_weights_queen.sql"
+psql -U postgres -f /Users/xun/Github/postgeoda/test/test_weights_queen.sql
 
 * Install
 

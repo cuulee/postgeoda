@@ -1,10 +1,12 @@
 #include <postgres.h>
 #include <pg_config.h>
 #include <fmgr.h>
+#include <nodes/execnodes.h>
 #include <funcapi.h>
 #include <utils/array.h>
-#include <utils/geo_decls.h>
+//#include <utils/geo_decls.h>
 
+#include "config.h"
 #include "geoms.h"
 
 #ifdef PG_MODULE_MAGIC
@@ -20,6 +22,11 @@ typedef struct CollectionBuildState
     Oid geomOid;
 } CollectionBuildState;
 
+typedef struct Point
+{
+    double x;
+    double y;
+} Point;
 
 
 uint32_t array_nelems_not_null(ArrayType* array) {
@@ -97,19 +104,19 @@ Datum bytea_to_geom_transfn(PG_FUNCTION_ARGS)
     if(isnull) {
         new_agg_state->x = VARSIZE(bytea_wkb);
         new_agg_state->y = VARSIZE(bytea_wkb);
-        PG_RETURN_POINT_P(new_agg_state);
+        PG_RETURN_POINTER(new_agg_state);
         //state = (ArrayBuildState *)MemoryContextAlloc(aggcontext, sizeof(ArrayBuildState));
         //state->mcontext = aggcontext;
     }
 
     //state = (ArrayBuildState*) PG_GETARG_POINTER(0);
-    Point *agg_state = PG_GETARG_POINT_P(0);
+    Point *agg_state = PG_GETARG_POINTER(0);
 
     new_agg_state->x = VARSIZE(bytea_wkb);
     new_agg_state->y = VARSIZE(bytea_wkb);
 
 
-    PG_RETURN_POINT_P(agg_state);
+    PG_RETURN_POINTER(agg_state);
 }
 
 
@@ -118,7 +125,7 @@ PG_FUNCTION_INFO_V1(bytea_to_geom_finalfn);
 
 Datum bytea_to_geom_finalfn(PG_FUNCTION_ARGS)
 {
-    Point *agg_state = PG_GETARG_POINT_P(0);
+    Point *agg_state = PG_GETARG_POINTER(0);
 
     PG_RETURN_INT32(1);
 }
@@ -134,9 +141,9 @@ grt_sfunc(PG_FUNCTION_ARGS)
   if(isnull) {
     new_agg_state->x = el;
     new_agg_state->y = el;
-    PG_RETURN_POINT_P(new_agg_state);
+    PG_RETURN_POINTER(new_agg_state);
   }
-  Point *agg_state = PG_GETARG_POINT_P(0);
+  Point *agg_state = PG_GETARG_POINTER(0);
 
   new_agg_state->x = agg_state->x + el;
   if(new_agg_state->x > agg_state->y) {
@@ -145,5 +152,5 @@ grt_sfunc(PG_FUNCTION_ARGS)
     new_agg_state->y = agg_state->y;
   }
 
-  PG_RETURN_POINT_P(new_agg_state);
+  PG_RETURN_POINTER(new_agg_state);
 }

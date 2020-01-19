@@ -5,5 +5,6 @@
 #cmakedefine DEBUG
 #endif
 
+#cmakedefine POSTGIS_DEBUG_LEVEL 5
 
 #endif
