@@ -1,0 +1,7 @@
+CREATE EXTENSION log;
+SELECT base36_encode(0);
+ base36_encode 
+---------------
+ 
+(1 row)
+

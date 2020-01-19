@@ -1,0 +1,9 @@
+#ifndef POSTGEODA_CONFIG_H
+#define POSTGEODA_CONFIG_H
+
+#ifndef DEBUG
+#cmakedefine DEBUG
+#endif
+
+
+#endif

@@ -1,0 +1,29 @@
+
+
+* Install PostGIS on Ubuntu 18.04
+sudo apt install postgis postgresql-10-postgis-2.4
+
+* Create user in PG
+
+sudo su - postgres -c "createuser john"
+
+
+* ERROR:  permission denied to create database
+
+alter user xun with createdb;
+
+* ERROR:  permission denied to set parameter "lc_messages"
+
+ASSIGNING SUPERUSER PERMISSION
+
+ALTER USER xun WITH SUPERUSER;
+
+* Test
+
+sudo su - postgres -c "psql -f /home/xun/Downloads/postgeoda/test/test_weights_queen.sql"
+
+* Install
+
+sudo cmake --build /home/xun/Downloads/postgeoda/cmake-build-release --target install
+
+

@@ -1,0 +1,5 @@
+comment = 'PostgreSQL Extension for spatial data analysis'
+default_version = '@PROJECT_VERSION_MOD@'
+relocatable = true
+module_pathname = '$libdir/postgeoda-@PROJECT_VERSION_MOD@'
+requires = 'postgis'
