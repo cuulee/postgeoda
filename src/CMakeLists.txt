@@ -1,7 +1,7 @@
 set(SOURCES
         geoms.c
         weights.c
-        lwgeom_log.c
+        utils.c
         )
 
 # Add test source code in Debug builds

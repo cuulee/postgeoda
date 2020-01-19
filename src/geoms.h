@@ -171,11 +171,6 @@ static inline void wkb_parse_state_check(wkb_parse_state *s, size_t next)
 
 
 
-/* Memory management */
-extern void *lwalloc(size_t size);
-extern void *lwrealloc(void *mem, size_t size);
-extern void lwfree(void *mem);
-
 
 /******************************************************************
 * LWGEOM and GBOX both use LWFLAGS bit mask.

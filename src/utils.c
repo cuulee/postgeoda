@@ -5,7 +5,7 @@
 #include <ctype.h> /* for tolower */
 
 #include "config.h"
-#include "lwgeom_log.h"
+#include "utils.h"
 
 
 /* Default reporters */
@@ -93,3 +93,23 @@ default_noticereporter(const char *fmt, va_list ap)
     fprintf(stderr, "%s\n", msg);
 }
 
+void *
+lwalloc(size_t size)
+{
+    void *mem = lwalloc_var(size);
+    LWDEBUGF(5, "lwalloc: %d@%p", size, mem);
+    return mem;
+}
+
+void *
+lwrealloc(void *mem, size_t size)
+{
+    LWDEBUGF(5, "lwrealloc: %d@%p", size, mem);
+    return lwrealloc_var(mem, size);
+}
+
+void
+lwfree(void *mem)
+{
+    lwfree_var(mem);
+}

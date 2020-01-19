@@ -144,4 +144,10 @@ typedef void (*lwdebuglogger)(int level, const char* fmt, va_list ap)
 
 #define LW_MSG_MAXLEN 256
 
+
+/* Memory management */
+extern void *lwalloc(size_t size);
+extern void *lwrealloc(void *mem, size_t size);
+extern void lwfree(void *mem);
+
 #endif /* LWGEOM_LOG_H */
