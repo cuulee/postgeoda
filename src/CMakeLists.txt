@@ -2,6 +2,7 @@ set(SOURCES
         geoms.c
         weights.c
         utils.c
+        proxy.cpp
         )
 
 # Add test source code in Debug builds

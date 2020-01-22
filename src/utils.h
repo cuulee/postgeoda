@@ -150,4 +150,5 @@ extern void *lwalloc(size_t size);
 extern void *lwrealloc(void *mem, size_t size);
 extern void lwfree(void *mem);
 
+
 #endif /* LWGEOM_LOG_H */

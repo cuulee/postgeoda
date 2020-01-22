@@ -3,9 +3,15 @@
 #include <math.h>
 #include <limits.h>
 
-
+#include "config.h"
 #include "utils.h"
 #include "geoms.h"
+
+
+/**
+* Internal function declarations.
+*/
+LWGEOM* lwgeom_from_wkb_state(wkb_parse_state *s);
 
 static char *lwgeomTypeName[] =
         {
@@ -34,6 +40,28 @@ static void * default_reallocator(void *mem, size_t size);
 lwallocator lwalloc_var = default_allocator;
 lwreallocator lwrealloc_var = default_reallocator;
 lwfreeor lwfree_var = default_freeor;
+
+
+int32_t
+clamp_srid(int32_t srid)
+{
+    int newsrid = srid;
+
+    if ( newsrid <= 0 ) {
+        if ( newsrid != SRID_UNKNOWN ) {
+            newsrid = SRID_UNKNOWN;
+            lwnotice("SRID value %d converted to the officially unknown SRID value %d", srid, newsrid);
+        }
+    } else if ( srid > SRID_MAXIMUM ) {
+        newsrid = SRID_USER_MAXIMUM + 1 +
+                  /* -1 is to reduce likelyhood of clashes */
+                  /* NOTE: must match implementation in postgis_restore.pl */
+                  ( srid % ( SRID_MAXIMUM - SRID_USER_MAXIMUM - 1 ) );
+        lwnotice("SRID value %d > SRID_MAXIMUM converted to %d", srid, newsrid);
+    }
+
+    return newsrid;
+}
 
 /*
  * Default allocators
@@ -86,7 +114,30 @@ lwtype_name(uint8_t type)
     return lwgeomTypeName[(int ) type];
 }
 
+/** Return TRUE if the geometry may contain sub-geometries, i.e. it is a MULTI* or COMPOUNDCURVE */
+int
+lwtype_is_collection(uint8_t type)
+{
 
+    switch (type)
+    {
+        case MULTIPOINTTYPE:
+        case MULTILINETYPE:
+        case MULTIPOLYGONTYPE:
+        case COLLECTIONTYPE:
+        case CURVEPOLYTYPE:
+        case COMPOUNDTYPE:
+        case MULTICURVETYPE:
+        case MULTISURFACETYPE:
+        case POLYHEDRALSURFACETYPE:
+        case TINTYPE:
+            return LW_TRUE;
+            break;
+
+        default:
+            return LW_FALSE;
+    }
+}
 
 void
 ptarray_free(POINTARRAY *pa)
@@ -122,6 +173,54 @@ lwpoly_construct_empty(int32_t srid, char hasz, char hasm)
     result->rings = lwalloc(result->maxrings * sizeof(POINTARRAY*));
     result->bbox = NULL;
     return result;
+}
+
+int lwcollection_allows_subtype(int collectiontype, int subtype)
+{
+    if ( collectiontype == COLLECTIONTYPE )
+        return LW_TRUE;
+    if ( collectiontype == MULTIPOINTTYPE &&
+         subtype == POINTTYPE )
+        return LW_TRUE;
+    if ( collectiontype == MULTILINETYPE &&
+         subtype == LINETYPE )
+        return LW_TRUE;
+    if ( collectiontype == MULTIPOLYGONTYPE &&
+         subtype == POLYGONTYPE )
+        return LW_TRUE;
+    if ( collectiontype == COMPOUNDTYPE &&
+         (subtype == LINETYPE || subtype == CIRCSTRINGTYPE) )
+        return LW_TRUE;
+    if ( collectiontype == CURVEPOLYTYPE &&
+         (subtype == CIRCSTRINGTYPE || subtype == LINETYPE || subtype == COMPOUNDTYPE) )
+        return LW_TRUE;
+    if ( collectiontype == MULTICURVETYPE &&
+         (subtype == CIRCSTRINGTYPE || subtype == LINETYPE || subtype == COMPOUNDTYPE) )
+        return LW_TRUE;
+    if ( collectiontype == MULTISURFACETYPE &&
+         (subtype == POLYGONTYPE || subtype == CURVEPOLYTYPE) )
+        return LW_TRUE;
+    if ( collectiontype == POLYHEDRALSURFACETYPE &&
+         subtype == POLYGONTYPE )
+        return LW_TRUE;
+    if ( collectiontype == TINTYPE &&
+         subtype == TRIANGLETYPE )
+        return LW_TRUE;
+
+    /* Must be a bad combination! */
+    return LW_FALSE;
+}
+
+/**
+ * Ensure the collection can hold up at least ngeoms
+ */
+void lwcollection_reserve(LWCOLLECTION *col, uint32_t ngeoms)
+{
+    if ( ngeoms <= col->maxgeoms ) return;
+
+    /* Allocate more space if we need it */
+    do { col->maxgeoms *= 2; } while ( col->maxgeoms < ngeoms );
+    col->geoms = lwrealloc(col->geoms, sizeof(LWGEOM*) * col->maxgeoms);
 }
 
 void
@@ -337,6 +436,102 @@ lwpoint_construct_empty(int32_t srid, char hasz, char hasm)
     return result;
 }
 
+LWCURVEPOLY *
+lwcurvepoly_construct_empty(int32_t srid, char hasz, char hasm)
+{
+    LWCURVEPOLY *ret;
+
+    ret = lwalloc(sizeof(LWCURVEPOLY));
+    ret->type = CURVEPOLYTYPE;
+    ret->flags = lwflags(hasz, hasm, 0);
+    ret->srid = srid;
+    ret->nrings = 0;
+    ret->maxrings = 1; /* Allocate room for sub-members, just in case. */
+    ret->rings = lwalloc(ret->maxrings * sizeof(LWGEOM*));
+    ret->bbox = NULL;
+
+    return ret;
+}
+
+int lwcurvepoly_add_ring(LWCURVEPOLY *poly, LWGEOM *ring)
+{
+    uint32_t i;
+
+    /* Can't do anything with NULLs */
+    if( ! poly || ! ring )
+    {
+        LWDEBUG(4,"NULL inputs!!! quitting");
+        return LW_FAILURE;
+    }
+
+    /* Check that we're not working with garbage */
+    if ( poly->rings == NULL && (poly->nrings || poly->maxrings) )
+    {
+        LWDEBUG(4,"mismatched nrings/maxrings");
+        lwerror("Curvepolygon is in inconsistent state. Null memory but non-zero collection counts.");
+        return LW_FAILURE;
+    }
+
+    /* Check that we're adding an allowed ring type */
+    if ( ! ( ring->type == LINETYPE || ring->type == CIRCSTRINGTYPE || ring->type == COMPOUNDTYPE ) )
+    {
+        LWDEBUGF(4,"got incorrect ring type: %s",lwtype_name(ring->type));
+        return LW_FAILURE;
+    }
+
+
+    /* In case this is a truly empty, make some initial space  */
+    if ( poly->rings == NULL )
+    {
+        poly->maxrings = 2;
+        poly->nrings = 0;
+        poly->rings = lwalloc(poly->maxrings * sizeof(LWGEOM*));
+    }
+
+    /* Allocate more space if we need it */
+    if ( poly->nrings == poly->maxrings )
+    {
+        poly->maxrings *= 2;
+        poly->rings = lwrealloc(poly->rings, sizeof(LWGEOM*) * poly->maxrings);
+    }
+
+    /* Make sure we don't already have a reference to this geom */
+    for ( i = 0; i < poly->nrings; i++ )
+    {
+        if ( poly->rings[i] == ring )
+        {
+            LWDEBUGF(4, "Found duplicate geometry in collection %p == %p", poly->rings[i], ring);
+            return LW_SUCCESS;
+        }
+    }
+
+    /* Add the ring and increment the ring count */
+    poly->rings[poly->nrings] = (LWGEOM*)ring;
+    poly->nrings++;
+    return LW_SUCCESS;
+}
+
+LWCOLLECTION *
+lwcollection_construct_empty(uint8_t type, int32_t srid, char hasz, char hasm)
+{
+    LWCOLLECTION *ret;
+    if( ! lwtype_is_collection(type) )
+    {
+        lwerror("Non-collection type specified in collection constructor!");
+        return NULL;
+    }
+
+    ret = lwalloc(sizeof(LWCOLLECTION));
+    ret->type = type;
+    ret->flags = lwflags(hasz,hasm,0);
+    ret->srid = srid;
+    ret->ngeoms = 0;
+    ret->maxgeoms = 1; /* Allocate room for sub-members, just in case. */
+    ret->geoms = lwalloc(ret->maxgeoms * sizeof(LWGEOM*));
+    ret->bbox = NULL;
+
+    return ret;
+}
 
 /**
 * Byte
@@ -357,6 +552,22 @@ static char byte_from_wkb_state(wkb_parse_state *s)
     s->pos += WKB_BYTE_SIZE;
 
     return char_value;
+}
+
+
+/**
+* Utility method to call the serialization and then set the
+* PgSQL varsize header appropriately with the serialized size.
+*/
+GSERIALIZED* geometry_serialize(LWGEOM *lwgeom)
+{
+    size_t ret_size = 0;
+    GSERIALIZED *g = NULL;
+
+    g = gserialized_from_lwgeom(lwgeom, &ret_size);
+    if ( ! g ) lwpgerror("Unable to serialize lwgeom.");
+    SET_VARSIZE(g, ret_size);
+    return g;
 }
 
 /**
@@ -593,6 +804,138 @@ static POINTARRAY* ptarray_from_wkb_state(wkb_parse_state *s)
     return pa;
 }
 
+GBOX* gbox_copy(const GBOX *box)
+{
+    GBOX *copy = (GBOX*)lwalloc(sizeof(GBOX));
+    memcpy(copy, box, sizeof(GBOX));
+    return copy;
+}
+
+/**
+ * @brief Deep clone a pointarray (also clones serialized pointlist)
+ */
+POINTARRAY *
+ptarray_clone_deep(const POINTARRAY *in)
+{
+    POINTARRAY *out = lwalloc(sizeof(POINTARRAY));
+
+    LWDEBUG(3, "ptarray_clone_deep called.");
+
+    out->flags = in->flags;
+    out->npoints = in->npoints;
+    out->maxpoints = in->npoints;
+
+    FLAGS_SET_READONLY(out->flags, 0);
+
+    if (!in->npoints)
+    {
+        // Avoid calling lwalloc of 0 bytes
+        out->serialized_pointlist = NULL;
+    }
+    else
+    {
+        size_t size = in->npoints * ptarray_point_size(in);
+        out->serialized_pointlist = lwalloc(size);
+        memcpy(out->serialized_pointlist, in->serialized_pointlist, size);
+    }
+
+    return out;
+}
+
+/* Deep clone LWPOLY object. POINTARRAY are copied, as is ring array */
+LWPOLY *
+lwpoly_clone_deep(const LWPOLY *g)
+{
+    uint32_t i;
+    LWPOLY *ret = lwalloc(sizeof(LWPOLY));
+    memcpy(ret, g, sizeof(LWPOLY));
+    if ( g->bbox ) ret->bbox = gbox_copy(g->bbox);
+    ret->rings = lwalloc(sizeof(POINTARRAY *)*g->nrings);
+    for ( i = 0; i < ret->nrings; i++ )
+    {
+        ret->rings[i] = ptarray_clone_deep(g->rings[i]);
+    }
+    FLAGS_SET_READONLY(ret->flags,0);
+    return ret;
+}
+
+/* Deep clone LWLINE object. POINTARRAY *is* copied. */
+LWLINE *
+lwline_clone_deep(const LWLINE *g)
+{
+    LWLINE *ret = lwalloc(sizeof(LWLINE));
+
+    LWDEBUGF(2, "lwline_clone_deep called with %p", g);
+    memcpy(ret, g, sizeof(LWLINE));
+
+    if ( g->bbox ) ret->bbox = gbox_copy(g->bbox);
+    if ( g->points ) ret->points = ptarray_clone_deep(g->points);
+    FLAGS_SET_READONLY(ret->flags,0);
+
+    return ret;
+}
+
+/**
+* @brief Deep clone #LWCOLLECTION object. #POINTARRAY are copied.
+*/
+LWCOLLECTION *
+lwcollection_clone_deep(const LWCOLLECTION *g)
+{
+    uint32_t i;
+    LWCOLLECTION *ret = lwalloc(sizeof(LWCOLLECTION));
+    memcpy(ret, g, sizeof(LWCOLLECTION));
+    if ( g->ngeoms > 0 )
+    {
+        ret->geoms = lwalloc(sizeof(LWGEOM *)*g->ngeoms);
+        for (i=0; i<g->ngeoms; i++)
+        {
+            ret->geoms[i] = lwgeom_clone_deep(g->geoms[i]);
+        }
+        if ( g->bbox ) ret->bbox = gbox_copy(g->bbox);
+    }
+    else
+    {
+        ret->bbox = NULL; /* empty collection */
+        ret->geoms = NULL;
+    }
+    return ret;
+}
+
+/**
+* Deep-clone an #LWGEOM object. #POINTARRAY <em>are</em> copied.
+*/
+LWGEOM *
+lwgeom_clone_deep(const LWGEOM *lwgeom)
+{
+    LWDEBUGF(2, "lwgeom_clone called with %p, %s",
+             lwgeom, lwtype_name(lwgeom->type));
+
+    switch (lwgeom->type)
+    {
+        case POINTTYPE:
+        case LINETYPE:
+        case CIRCSTRINGTYPE:
+        case TRIANGLETYPE:
+            return (LWGEOM *)lwline_clone_deep((LWLINE *)lwgeom);
+        case POLYGONTYPE:
+            return (LWGEOM *)lwpoly_clone_deep((LWPOLY *)lwgeom);
+        case COMPOUNDTYPE:
+        case CURVEPOLYTYPE:
+        case MULTICURVETYPE:
+        case MULTISURFACETYPE:
+        case MULTIPOINTTYPE:
+        case MULTILINETYPE:
+        case MULTIPOLYGONTYPE:
+        case POLYHEDRALSURFACETYPE:
+        case TINTYPE:
+        case COLLECTIONTYPE:
+            return (LWGEOM *)lwcollection_clone_deep((LWCOLLECTION *)lwgeom);
+        default:
+            lwerror("lwgeom_clone_deep: Unknown geometry type: %s", lwtype_name(lwgeom->type));
+            return NULL;
+    }
+}
+
 /**
 * POINT
 * Read a WKB point, starting just after the endian byte,
@@ -715,6 +1058,132 @@ static LWPOLY* lwpoly_from_wkb_state(wkb_parse_state *s)
 }
 
 /**
+* CURVEPOLYTYPE
+*/
+static LWPOLY* lwcurvepoly_from_wkb_state(wkb_parse_state *s)
+{
+    uint32_t ngeoms = integer_from_wkb_state(s);
+    if (s->error)
+        return NULL;
+    LWCURVEPOLY *cp = lwcurvepoly_construct_empty(s->srid, s->has_z, s->has_m);
+    LWGEOM *geom = NULL;
+    uint32_t i;
+
+    /* Empty collection? */
+    if ( ngeoms == 0 )
+        return cp;
+
+    for ( i = 0; i < ngeoms; i++ )
+    {
+        geom = lwgeom_from_wkb_state(s);
+        if ( lwcurvepoly_add_ring(cp, geom) == LW_FAILURE )
+        {
+            lwgeom_free(geom);
+            lwgeom_free((LWGEOM *)cp);
+            lwerror("Unable to add geometry (%p) to curvepoly (%p)", geom, cp);
+            return NULL;
+        }
+    }
+
+    return cp;
+}
+
+/**
+* Appends geom to the collection managed by col. Does not copy or
+* clone, simply takes a reference on the passed geom.
+*/
+LWCOLLECTION* lwcollection_add_lwgeom(LWCOLLECTION *col, const LWGEOM *geom)
+{
+    if (!col || !geom) return NULL;
+
+    if (!col->geoms && (col->ngeoms || col->maxgeoms))
+    {
+        lwerror("Collection is in inconsistent state. Null memory but non-zero collection counts.");
+        return NULL;
+    }
+
+    /* Check type compatibility */
+    if ( ! lwcollection_allows_subtype(col->type, geom->type) ) {
+        lwerror("%s cannot contain %s element", lwtype_name(col->type), lwtype_name(geom->type));
+        return NULL;
+    }
+
+    /* In case this is a truly empty, make some initial space  */
+    if (!col->geoms)
+    {
+        col->maxgeoms = 2;
+        col->ngeoms = 0;
+        col->geoms = lwalloc(col->maxgeoms * sizeof(LWGEOM*));
+    }
+
+    /* Allocate more space if we need it */
+    lwcollection_reserve(col, col->ngeoms + 1);
+
+#if PARANOIA_LEVEL > 1
+    /* See http://trac.osgeo.org/postgis/ticket/2933 */
+	/* Make sure we don't already have a reference to this geom */
+	{
+		uint32_t i = 0;
+		for (i = 0; i < col->ngeoms; i++)
+		{
+			if (col->geoms[i] == geom)
+			{
+				lwerror("%s [%d] found duplicate geometry in collection %p == %p", __FILE__, __LINE__, col->geoms[i], geom);
+				return col;
+			}
+		}
+	}
+#endif
+
+    col->geoms[col->ngeoms] = (LWGEOM*)geom;
+    col->ngeoms++;
+    return col;
+}
+
+/**
+* POLYHEDRALSURFACETYPE
+*/
+
+/**
+* COLLECTION, MULTIPOINTTYPE, MULTILINETYPE, MULTIPOLYGONTYPE, COMPOUNDTYPE,
+* MULTICURVETYPE, MULTISURFACETYPE,
+* TINTYPE
+*/
+static LWCOLLECTION* lwcollection_from_wkb_state(wkb_parse_state *s)
+{
+    uint32_t ngeoms = integer_from_wkb_state(s);
+    if (s->error)
+        return NULL;
+    LWCOLLECTION *col = lwcollection_construct_empty(s->lwtype, s->srid, s->has_z, s->has_m);
+    LWGEOM *geom = NULL;
+    uint32_t i;
+
+    LWDEBUGF(4,"Collection has %d components", ngeoms);
+
+    /* Empty collection? */
+    if ( ngeoms == 0 )
+        return col;
+
+    /* Be strict in polyhedral surface closures */
+    if ( s->lwtype == POLYHEDRALSURFACETYPE )
+        s->check |= LW_PARSER_CHECK_ZCLOSURE;
+
+    for ( i = 0; i < ngeoms; i++ )
+    {
+        geom = lwgeom_from_wkb_state(s);
+        if ( lwcollection_add_lwgeom(col, geom) == NULL )
+        {
+            lwgeom_free(geom);
+            lwgeom_free((LWGEOM *)col);
+            lwerror("Unable to add geometry (%p) to collection (%p)", geom, col);
+            return NULL;
+        }
+    }
+
+    return col;
+}
+
+/**
 * GEOMETRY
 * Generic handling for WKB geometries. The front of every WKB geometry
 * (including those embedded in collections) is an endian byte, a type
@@ -778,29 +1247,22 @@ LWGEOM* lwgeom_from_wkb_state(wkb_parse_state *s)
             break;
 
         case CURVEPOLYTYPE:
-            //return (LWGEOM*)lwcurvepoly_from_wkb_state(s);
+            return (LWGEOM*)lwcurvepoly_from_wkb_state(s);
             break;
         case MULTIPOINTTYPE:
-        case MULTILINETYPE:
         case MULTIPOLYGONTYPE:
-        case COMPOUNDTYPE:
-        case MULTICURVETYPE:
-        case MULTISURFACETYPE:
-        case POLYHEDRALSURFACETYPE:
-        case TINTYPE:
         case COLLECTIONTYPE:
-            //return (LWGEOM*)lwcollection_from_wkb_state(s);
+            return (LWGEOM*)lwcollection_from_wkb_state(s);
             break;
         case LINETYPE:
-            //return (LWGEOM*)lwline_from_wkb_state(s);
-            break;
         case CIRCSTRINGTYPE:
-            //return (LWGEOM*)lwcircstring_from_wkb_state(s);
-            break;
         case TRIANGLETYPE:
-            //return (LWGEOM*)lwtriangle_from_wkb_state(s);
-            break;
-            /* Unknown type! */
+        case MULTICURVETYPE:
+        case MULTISURFACETYPE:
+        case COMPOUNDTYPE:
+        case MULTILINETYPE:
+        case POLYHEDRALSURFACETYPE:
+        case TINTYPE:
         default:
             lwerror("%s: Unsupported geometry type: %s", __func__, lwtype_name(s->lwtype));
     }

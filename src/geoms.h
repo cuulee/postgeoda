@@ -1,6 +1,7 @@
 #ifndef __POST_GEOMS_H__
 #define __POST_GEOMS_H__
 
+#include <stdlib.h>
 #include <stdint.h>
 
 /**
@@ -133,10 +134,6 @@
 #define WKB_TIN_TYPE 16
 #define WKB_TRIANGLE_TYPE 17
 
-/** Unknown SRID value */
-#define SRID_UNKNOWN 0
-#define SRID_IS_UNKNOWN(x) ((int)x<=0)
-
 
 /**
 * Used for passing the parse state between the parsing functions.
@@ -168,9 +165,6 @@ static inline void wkb_parse_state_check(wkb_parse_state *s, size_t next)
         s->error = LW_TRUE;
     }
 }
-
-
-
 
 /******************************************************************
 * LWGEOM and GBOX both use LWFLAGS bit mask.
@@ -318,6 +312,18 @@ typedef struct
     uint32_t maxgeoms; /* how many geometries we have space for in **geoms */
 }
         LWMPOINT;
+
+/* LINETYPE */
+typedef struct
+{
+    GBOX *bbox;
+    POINTARRAY *points; /* array of POINT3D */
+    int32_t srid;
+    lwflags_t flags;
+    uint8_t type; /* LINETYPE */
+    char pad[1]; /* Padding to 24 bytes (unused) */
+}
+        LWLINE; /* "light-weight line" */
 
 /* MULTIPOLYGONTYPE */
 typedef struct
@@ -477,4 +483,153 @@ getPoint2d_cp(const POINTARRAY *pa, uint32_t n)
  */
 extern LWGEOM* lwgeom_from_wkb(const uint8_t *wkb, const size_t wkb_size, const char check);
 
+
+/*
+* Empty geometry constructors.
+*/
+extern LWGEOM* lwgeom_construct_empty(uint8_t type, int32_t srid, char hasz, char hasm);
+extern LWPOINT* lwpoint_construct_empty(int32_t srid, char hasz, char hasm);
+extern LWPOLY* lwpoly_construct_empty(int32_t srid, char hasz, char hasm);
+extern LWCURVEPOLY* lwcurvepoly_construct_empty(int32_t srid, char hasz, char hasm);
+extern LWMPOINT* lwmpoint_construct_empty(int32_t srid, char hasz, char hasm);
+extern LWMPOLY* lwmpoly_construct_empty(int32_t srid, char hasz, char hasm);
+extern LWCOLLECTION* lwcollection_construct_empty(uint8_t type, int32_t srid, char hasz, char hasm);
+
+/* Casts LWGEOM->LW* (return NULL if cast is illegal) */
+static inline LWPOINT *
+lwgeom_as_lwpoint(const LWGEOM *lwgeom)
+{
+    if (!lwgeom)
+        return NULL;
+    if (lwgeom->type == POINTTYPE)
+        return (LWPOINT *)lwgeom;
+    else
+        return NULL;
+}
+extern LWMPOLY *lwgeom_as_lwmpoly(const LWGEOM *lwgeom);
+extern LWMPOINT *lwgeom_as_lwmpoint(const LWGEOM *lwgeom);
+extern LWCOLLECTION *lwgeom_as_lwcollection(const LWGEOM *lwgeom);
+extern LWPOLY *lwgeom_as_lwpoly(const LWGEOM *lwgeom);
+
+extern LWCURVEPOLY *lwgeom_as_lwcurvepoly(const LWGEOM *lwgeom);
+extern LWGEOM *lwgeom_as_multi(const LWGEOM *lwgeom);
+extern LWGEOM *lwgeom_as_curve(const LWGEOM *lwgeom);
+
+/******************************************************************/
+/* Functions that work on type numbers */
+
+/**
+* Determine whether a type number is a collection or not
+*/
+extern int lwtype_is_collection(uint8_t type);
+
+extern LWCOLLECTION* lwcollection_add_lwgeom(LWCOLLECTION *col, const LWGEOM *geom);
+
+/** Check if subtype is allowed in collectiontype */
+int lwcollection_allows_subtype(int collectiontype, int subtype);
+
+/** Ensure the collection can hold at least up to ngeoms geometries */
+void lwcollection_reserve(LWCOLLECTION *col, uint32_t ngeoms);
+
+/**
+* Return a valid SRID from an arbitrary integer
+* Raises a notice if what comes out is different from
+* what went in.
+* Raises an error if SRID value is out of bounds.
+*/
+extern int32_t clamp_srid(int32_t srid);
+
+/**
+* Utility method to call the serialization and then set the
+* PgSQL varsize header appropriately with the serialized size.
+*/
+GSERIALIZED *geometry_serialize(LWGEOM *lwgeom);
+
+/**
+* Deep clone an LWGEOM, everything is copied
+*/
+extern LWGEOM *lwgeom_clone_deep(const LWGEOM *lwgeom);
+extern POINTARRAY *ptarray_clone_deep(const POINTARRAY *ptarray);
+
+LWLINE *lwline_clone_deep(const LWLINE *lwgeom);
+LWPOLY *lwpoly_clone_deep(const LWPOLY *lwgeom);
+LWCOLLECTION *lwcollection_clone_deep(const LWCOLLECTION *lwgeom);
+
+/**
+* Return a copy of the #GBOX, based on dimensionality of flags.
+*/
+extern GBOX* gbox_copy(const GBOX *gbox);
+
+/**
+ * Return true or false depending on whether a geometry is an "empty"
+ * geometry (no vertices members)
+ */
+static inline int
+lwpoint_is_empty(const LWPOINT *point)
+{
+    return !point->point || point->point->npoints < 1;
+}
+
+static inline int
+lwpoly_is_empty(const LWPOLY *poly)
+{
+    return poly->nrings < 1 || !poly->rings || !poly->rings[0] || poly->rings[0]->npoints < 1;
+}
+
+static inline int lwgeom_is_empty(const LWGEOM *geom);
+
+
+static inline int
+lwcollection_is_empty(const LWCOLLECTION *col)
+{
+    uint32_t i;
+    if (col->ngeoms == 0 || !col->geoms)
+        return LW_TRUE;
+    for (i = 0; i < col->ngeoms; i++)
+    {
+        if (!lwgeom_is_empty(col->geoms[i]))
+            return LW_FALSE;
+    }
+    return LW_TRUE;
+}
+
+
+
+static inline int
+lwgeom_is_empty(const LWGEOM *geom)
+{
+    switch (geom->type)
+    {
+        case POINTTYPE:
+            return lwpoint_is_empty((LWPOINT *)geom);
+            break;
+        case LINETYPE:
+            return LW_FALSE;
+            break;
+        case CIRCSTRINGTYPE:
+            return LW_FALSE;//lwcircstring_is_empty((LWCIRCSTRING *)geom);
+            break;
+        case POLYGONTYPE:
+            return lwpoly_is_empty((LWPOLY *)geom);
+            break;
+        case TRIANGLETYPE:
+            return LW_FALSE;//lwtriangle_is_empty((LWTRIANGLE *)geom);
+            break;
+        case MULTIPOINTTYPE:
+        case MULTILINETYPE:
+        case MULTIPOLYGONTYPE:
+        case COMPOUNDTYPE:
+        case CURVEPOLYTYPE:
+        case MULTICURVETYPE:
+        case MULTISURFACETYPE:
+        case POLYHEDRALSURFACETYPE:
+        case TINTYPE:
+        case COLLECTIONTYPE:
+            return lwcollection_is_empty((LWCOLLECTION *)geom);
+            break;
+        default:
+            return LW_FALSE;
+            break;
+    }
+}
 #endif
