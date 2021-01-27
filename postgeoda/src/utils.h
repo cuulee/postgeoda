@@ -30,7 +30,10 @@
 #define LWGEOM_LOG_H 1
 
 #include <stdarg.h>
-
+#include <stddef.h>
+#ifdef _MSC_VER
+#define __func__ __FUNCTION__
+#endif
 /*
  * Debug macros
  */
@@ -100,6 +103,11 @@
 
 #endif /* POSTGIS_DEBUG_LEVEL <= 0 */
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Write a notice out to the notice handler.
  *
@@ -136,19 +144,27 @@ void lwdebug(int level, const char *fmt, ...);
 typedef void* (*lwallocator)(size_t size);
 typedef void* (*lwreallocator)(void *mem, size_t size);
 typedef void (*lwfreeor)(void* mem);
+
+/*
+#ifdef _MSC_VER
+typedef void (*lwreporter)(const char* fmt, va_list ap)
+        __declspec(( format(printf, 1, 0) ));
+typedef void (*lwdebuglogger)(int level, const char* fmt, va_list ap)
+        __declspec(( format(printf, 2,0) ));
+#else
 typedef void (*lwreporter)(const char* fmt, va_list ap)
         __attribute__ (( format(printf, 1, 0) ));
 typedef void (*lwdebuglogger)(int level, const char* fmt, va_list ap)
         __attribute__ (( format(printf, 2,0) ));
-
+#endif
+*/
 
 #define LW_MSG_MAXLEN 256
 
 
-/* Memory management */
-extern void *lwalloc(size_t size);
-extern void *lwrealloc(void *mem, size_t size);
-extern void lwfree(void *mem);
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LWGEOM_LOG_H */

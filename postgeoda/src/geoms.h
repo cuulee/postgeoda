@@ -1,8 +1,26 @@
 #ifndef __POST_GEOMS_H__
 #define __POST_GEOMS_H__
 
-#include <stdlib.h>
+#ifdef _MSC_VER
+typedef signed __int8 int8_t;
+typedef unsigned __int8 uint8_t;
+typedef signed __int16 int16_t;
+typedef unsigned __int16 uint16_t;
+typedef __int32 int32_t;
+typedef unsigned __int32 uint32_t;
+typedef __int64 int64_t;
+typedef unsigned __int64 uint64_t;
+//typedef unsigned __int32 size_t;
+#define inline __inline
+#define isnan _isnan
+#else
 #include <stdint.h>
+#include <stdlib.h>
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
 * LWTYPE numbers, used internally by PostGIS
@@ -95,6 +113,15 @@
 #define LW_FAILURE 0
 #define LW_SUCCESS 1
 
+
+/*
+* this will change to NaN when I figure out how to
+* get NaN in a platform-independent way
+*/
+#define NO_VALUE 0.0
+#define NO_Z_VALUE NO_VALUE
+#define NO_M_VALUE NO_VALUE
+
 /**
 * Flags applied in EWKB to indicate Z/M dimensions and
 * presence/absence of SRID and bounding boxes
@@ -134,6 +161,11 @@
 #define WKB_TIN_TYPE 16
 #define WKB_TRIANGLE_TYPE 17
 
+
+/* Memory management */
+extern void *lwalloc(size_t size);
+extern void *lwrealloc(void *mem, size_t size);
+extern void lwfree(void *mem);
 
 /**
 * Used for passing the parse state between the parsing functions.
@@ -367,6 +399,12 @@ typedef struct
 }
         LWCURVEPOLY; /* "light-weight polygon" */
 
+/**
+* Create a new gbox with the dimensionality indicated by the flags. Caller
+* is responsible for freeing.
+*/
+extern GBOX* gbox_new(lwflags_t flags);
+
 /*
  * Size of point represeneted in the POINTARRAY
  * 16 for 2d, 24 for 3d, 32 for 4d
@@ -419,7 +457,7 @@ extern POINTARRAY* ptarray_construct_empty(char hasz, char hasm, uint32_t maxpoi
 /*
 * Empty geometry constructors.
 */
-extern LWPOINT* lwpoint_construct_empty(int32_t srid, char hasz, char hasm);
+//extern LWPOINT* lwpoint_construct_empty(int32_t srid, char hasz, char hasm);
 
 /*
 * Geometry constructors. These constructors to not copy the point arrays
@@ -477,22 +515,27 @@ getPoint2d_cp(const POINTARRAY *pa, uint32_t n)
 }
 
 /**
+* Add a ring, allocating extra space if necessary. The polygon takes
+* ownership of the passed point array.
+*/
+extern int lwpoly_add_ring(LWPOLY *poly, POINTARRAY *pa);
+
+/**
  * @param wkb_size length of WKB byte buffer
  * @param wkb WKB byte buffer
  * @param check parser check flags, see LW_PARSER_CHECK_* macros
  */
 extern LWGEOM* lwgeom_from_wkb(const uint8_t *wkb, const size_t wkb_size, const char check);
 
-
 /*
 * Empty geometry constructors.
 */
-extern LWGEOM* lwgeom_construct_empty(uint8_t type, int32_t srid, char hasz, char hasm);
+//extern LWGEOM* lwgeom_construct_empty(uint8_t type, int32_t srid, char hasz, char hasm);
 extern LWPOINT* lwpoint_construct_empty(int32_t srid, char hasz, char hasm);
 extern LWPOLY* lwpoly_construct_empty(int32_t srid, char hasz, char hasm);
 extern LWCURVEPOLY* lwcurvepoly_construct_empty(int32_t srid, char hasz, char hasm);
-extern LWMPOINT* lwmpoint_construct_empty(int32_t srid, char hasz, char hasm);
-extern LWMPOLY* lwmpoly_construct_empty(int32_t srid, char hasz, char hasm);
+//extern LWMPOINT* lwmpoint_construct_empty(int32_t srid, char hasz, char hasm);
+//extern LWMPOLY* lwmpoly_construct_empty(int32_t srid, char hasz, char hasm);
 extern LWCOLLECTION* lwcollection_construct_empty(uint8_t type, int32_t srid, char hasz, char hasm);
 
 /* Casts LWGEOM->LW* (return NULL if cast is illegal) */
@@ -506,14 +549,10 @@ lwgeom_as_lwpoint(const LWGEOM *lwgeom)
     else
         return NULL;
 }
-extern LWMPOLY *lwgeom_as_lwmpoly(const LWGEOM *lwgeom);
-extern LWMPOINT *lwgeom_as_lwmpoint(const LWGEOM *lwgeom);
-extern LWCOLLECTION *lwgeom_as_lwcollection(const LWGEOM *lwgeom);
-extern LWPOLY *lwgeom_as_lwpoly(const LWGEOM *lwgeom);
 
-extern LWCURVEPOLY *lwgeom_as_lwcurvepoly(const LWGEOM *lwgeom);
-extern LWGEOM *lwgeom_as_multi(const LWGEOM *lwgeom);
-extern LWGEOM *lwgeom_as_curve(const LWGEOM *lwgeom);
+LWMPOLY *lwgeom_as_lwmpoly(const LWGEOM *lwgeom);
+LWMPOINT *lwgeom_as_lwmpoint(const LWGEOM *lwgeom);
+LWPOLY *lwgeom_as_lwpoly(const LWGEOM *lwgeom);
 
 /******************************************************************/
 /* Functions that work on type numbers */
@@ -539,17 +578,13 @@ void lwcollection_reserve(LWCOLLECTION *col, uint32_t ngeoms);
 */
 extern int32_t clamp_srid(int32_t srid);
 
-/**
-* Utility method to call the serialization and then set the
-* PgSQL varsize header appropriately with the serialized size.
-*/
-GSERIALIZED *geometry_serialize(LWGEOM *lwgeom);
 
 /**
 * Deep clone an LWGEOM, everything is copied
 */
 extern LWGEOM *lwgeom_clone_deep(const LWGEOM *lwgeom);
 extern POINTARRAY *ptarray_clone_deep(const POINTARRAY *ptarray);
+extern int ptarray_is_closed_2d(const POINTARRAY *pa);
 
 LWLINE *lwline_clone_deep(const LWLINE *lwgeom);
 LWPOLY *lwpoly_clone_deep(const LWPOLY *lwgeom);
@@ -558,7 +593,22 @@ LWCOLLECTION *lwcollection_clone_deep(const LWCOLLECTION *lwgeom);
 /**
 * Return a copy of the #GBOX, based on dimensionality of flags.
 */
-extern GBOX* gbox_copy(const GBOX *gbox);
+ GBOX* gbox_copy(const GBOX *gbox);
+
+/*
+ * copies a point from the point array into the parameter point
+ * will set point's z=0 (or NaN) if pa is 2d
+ * will set point's m=0 (or NaN) if pa is 3d or 2d
+ * NOTE: point is a real POINT3D *not* a pointer
+ */
+POINT4D getPoint4d(const POINTARRAY *pa, uint32_t n);
+/*
+ * copies a point from the point array into the parameter point
+ * will set point's z=0 (or NaN) if pa is 2d
+ * will set point's m=0 (or NaN) if pa is 3d or 2d
+ * NOTE: this will modify the point4d pointed to by 'point'.
+ */
+ int getPoint4d_p(const POINTARRAY *pa, uint32_t n, POINT4D *point);
 
 /**
  * Return true or false depending on whether a geometry is an "empty"
@@ -632,4 +682,10 @@ lwgeom_is_empty(const LWGEOM *geom)
             break;
     }
 }
+
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif

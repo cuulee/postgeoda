@@ -41,28 +41,6 @@ lwallocator lwalloc_var = default_allocator;
 lwreallocator lwrealloc_var = default_reallocator;
 lwfreeor lwfree_var = default_freeor;
 
-
-int32_t
-clamp_srid(int32_t srid)
-{
-    int newsrid = srid;
-
-    if ( newsrid <= 0 ) {
-        if ( newsrid != SRID_UNKNOWN ) {
-            newsrid = SRID_UNKNOWN;
-            lwnotice("SRID value %d converted to the officially unknown SRID value %d", srid, newsrid);
-        }
-    } else if ( srid > SRID_MAXIMUM ) {
-        newsrid = SRID_USER_MAXIMUM + 1 +
-                  /* -1 is to reduce likelyhood of clashes */
-                  /* NOTE: must match implementation in postgis_restore.pl */
-                  ( srid % ( SRID_MAXIMUM - SRID_USER_MAXIMUM - 1 ) );
-        lwnotice("SRID value %d > SRID_MAXIMUM converted to %d", srid, newsrid);
-    }
-
-    return newsrid;
-}
-
 /*
  * Default allocators
  *
@@ -90,6 +68,51 @@ default_reallocator(void *mem, size_t size)
     void *ret = realloc(mem, size);
     return ret;
 }
+
+void *
+lwalloc(size_t size)
+{
+    void *mem = lwalloc_var(size);
+    LWDEBUGF(4, "lwalloc: %d@%p", size, mem);
+    return mem;
+}
+
+void *
+lwrealloc(void *mem, size_t size)
+{
+    LWDEBUGF(5, "lwrealloc: %d@%p", size, mem);
+    return lwrealloc_var(mem, size);
+}
+
+void
+lwfree(void *mem)
+{
+    lwfree_var(mem);
+}
+
+
+
+int32_t
+clamp_srid(int32_t srid)
+{
+    int newsrid = srid;
+
+    if ( newsrid <= 0 ) {
+        if ( newsrid != SRID_UNKNOWN ) {
+            newsrid = SRID_UNKNOWN;
+            lwnotice("SRID value %d converted to the officially unknown SRID value %d", srid, newsrid);
+        }
+    } else if ( srid > SRID_MAXIMUM ) {
+        newsrid = SRID_USER_MAXIMUM + 1 +
+                  /* -1 is to reduce likelyhood of clashes */
+                  /* NOTE: must match implementation in postgis_restore.pl */
+                  ( srid % ( SRID_MAXIMUM - SRID_USER_MAXIMUM - 1 ) );
+        lwnotice("SRID value %d > SRID_MAXIMUM converted to %d", srid, newsrid);
+    }
+
+    return newsrid;
+}
+
 
 lwflags_t lwflags(int hasz, int hasm, int geodetic)
 {
@@ -299,6 +322,77 @@ void lwcollection_free(LWCOLLECTION *col)
     }
     lwfree(col);
 }
+
+/**
+* WKB inputs *must* have a declared size, to prevent malformed WKB from reading
+* off the end of the memory segment (this stops a malevolent user from declaring
+* a one-ring polygon to have 10 rings, causing the WKB reader to walk off the
+* end of the memory).
+*
+* Check is a bitmask of: LW_PARSER_CHECK_MINPOINTS, LW_PARSER_CHECK_ODD,
+* LW_PARSER_CHECK_CLOSURE, LW_PARSER_CHECK_NONE, LW_PARSER_CHECK_ALL
+*/
+LWGEOM* lwgeom_from_wkb(const uint8_t *wkb, const size_t wkb_size, const char check)
+{
+    wkb_parse_state s;
+
+    /* Initialize the state appropriately */
+    s.wkb = wkb;
+    s.wkb_size = wkb_size;
+    s.swap_bytes = LW_FALSE;
+    s.check = check;
+    s.lwtype = 0;
+    s.srid = SRID_UNKNOWN;
+    s.has_z = LW_FALSE;
+    s.has_m = LW_FALSE;
+    s.has_srid = LW_FALSE;
+    s.error = LW_FALSE;
+    s.pos = wkb;
+
+    if (!wkb || !wkb_size)
+        return NULL;
+
+    return lwgeom_from_wkb_state(&s);
+}
+
+GBOX* gbox_new(lwflags_t flags)
+{
+    GBOX *g = (GBOX*)lwalloc(sizeof(GBOX));
+    //gbox_init(g);
+    memset(g, 0, sizeof(GBOX));
+    g->flags = flags;
+    return g;
+}
+
+LWMPOINT *
+lwgeom_as_lwmpoint(const LWGEOM *lwgeom)
+{
+    if ( lwgeom == NULL ) return NULL;
+    if ( lwgeom->type == MULTIPOINTTYPE )
+        return (LWMPOINT *)lwgeom;
+    else return NULL;
+}
+
+
+LWPOLY *
+lwgeom_as_lwpoly(const LWGEOM *lwgeom)
+{
+    if ( lwgeom == NULL ) return NULL;
+    if ( lwgeom->type == POLYGONTYPE )
+        return (LWPOLY *)lwgeom;
+    else return NULL;
+}
+
+LWMPOLY *
+lwgeom_as_lwmpoly(const LWGEOM *lwgeom)
+{
+    if ( lwgeom == NULL ) return NULL;
+    if ( lwgeom->type == MULTIPOLYGONTYPE )
+        return (LWMPOLY *)lwgeom;
+    else return NULL;
+}
+
+
 
 void lwgeom_free(LWGEOM *lwgeom)
 {
@@ -514,7 +608,8 @@ int lwcurvepoly_add_ring(LWCURVEPOLY *poly, LWGEOM *ring)
 LWCOLLECTION *
 lwcollection_construct_empty(uint8_t type, int32_t srid, char hasz, char hasm)
 {
-    LWCOLLECTION *ret;
+
+    LWCOLLECTION* ret;
     if( ! lwtype_is_collection(type) )
     {
         lwerror("Non-collection type specified in collection constructor!");
@@ -554,21 +649,6 @@ static char byte_from_wkb_state(wkb_parse_state *s)
     return char_value;
 }
 
-
-/**
-* Utility method to call the serialization and then set the
-* PgSQL varsize header appropriately with the serialized size.
-*/
-GSERIALIZED* geometry_serialize(LWGEOM *lwgeom)
-{
-    size_t ret_size = 0;
-    GSERIALIZED *g = NULL;
-
-    g = gserialized_from_lwgeom(lwgeom, &ret_size);
-    if ( ! g ) lwpgerror("Unable to serialize lwgeom.");
-    SET_VARSIZE(g, ret_size);
-    return g;
-}
 
 /**
 * Int32
@@ -640,8 +720,6 @@ static void lwtype_from_wkb_state(wkb_parse_state *s, uint32_t wkb_type)
 {
     uint32_t wkb_simple_type;
 
-    //LWDEBUG(4, "Entered function");
-
     s->has_z = LW_FALSE;
     s->has_m = LW_FALSE;
     s->has_srid = LW_FALSE;
@@ -652,7 +730,7 @@ static void lwtype_from_wkb_state(wkb_parse_state *s, uint32_t wkb_type)
         if( wkb_type & WKBZOFFSET ) s->has_z = LW_TRUE;
         if( wkb_type & WKBMOFFSET ) s->has_m = LW_TRUE;
         if( wkb_type & WKBSRIDFLAG ) s->has_srid = LW_TRUE;
-        //LWDEBUGF(4, "Extended type: has_z=%d has_m=%d has_srid=%d", s->has_z, s->has_m, s->has_srid);
+        LWDEBUGF(4, "Extended type: has_z=%d has_m=%d has_srid=%d", s->has_z, s->has_m, s->has_srid);
     }
 
     /* Mask off the flags */
@@ -739,8 +817,6 @@ static void lwtype_from_wkb_state(wkb_parse_state *s, uint32_t wkb_type)
             break;
     }
 
-    //LWDEBUGF(4,"Got lwtype %s (%u)", lwtype_name(s->lwtype), s->lwtype);
-
     return;
 }
 
@@ -766,8 +842,6 @@ static POINTARRAY* ptarray_from_wkb_state(wkb_parse_state *s)
         lwerror("Pointarray length (%d) is too large");
         return NULL;
     }
-
-    LWDEBUGF(4,"Pointarray has %d points", npoints);
 
     if( s->has_z ) ndims++;
     if( s->has_m ) ndims++;
@@ -819,8 +893,6 @@ ptarray_clone_deep(const POINTARRAY *in)
 {
     POINTARRAY *out = lwalloc(sizeof(POINTARRAY));
 
-    LWDEBUG(3, "ptarray_clone_deep called.");
-
     out->flags = in->flags;
     out->npoints = in->npoints;
     out->maxpoints = in->npoints;
@@ -840,6 +912,43 @@ ptarray_clone_deep(const POINTARRAY *in)
     }
 
     return out;
+}
+
+int
+ptarray_is_closed_2d(const POINTARRAY *in)
+{
+    if (!in)
+    {
+        lwerror("ptarray_is_closed_2d: called with null point array");
+        return 0;
+    }
+    if (in->npoints <= 1 ) return in->npoints; /* single-point are closed, empty not closed */
+
+    return 0 == memcmp(getPoint_internal(in, 0), getPoint_internal(in, in->npoints-1), sizeof(POINT2D) );
+}
+
+/**
+* Add a ring to a polygon. Point array will be referenced, not copied.
+*/
+int
+lwpoly_add_ring(LWPOLY *poly, POINTARRAY *pa)
+{
+    if( ! poly || ! pa )
+        return LW_FAILURE;
+
+    /* We have used up our storage, add some more. */
+    if( poly->nrings >= poly->maxrings )
+    {
+        int new_maxrings = 2 * (poly->nrings + 1);
+        poly->rings = lwrealloc(poly->rings, new_maxrings * sizeof(POINTARRAY*));
+        poly->maxrings = new_maxrings;
+    }
+
+    /* Add the new ring entry. */
+    poly->rings[poly->nrings] = pa;
+    poly->nrings++;
+
+    return LW_SUCCESS;
 }
 
 /* Deep clone LWPOLY object. POINTARRAY are copied, as is ring array */
@@ -907,8 +1016,6 @@ lwcollection_clone_deep(const LWCOLLECTION *g)
 LWGEOM *
 lwgeom_clone_deep(const LWGEOM *lwgeom)
 {
-    LWDEBUGF(2, "lwgeom_clone called with %p, %s",
-             lwgeom, lwtype_name(lwgeom->type));
 
     switch (lwgeom->type)
     {
@@ -1005,11 +1112,14 @@ static LWPOINT* lwpoint_from_wkb_state(wkb_parse_state *s)
 */
 static LWPOLY* lwpoly_from_wkb_state(wkb_parse_state *s)
 {
-    uint32_t nrings = integer_from_wkb_state(s);
-    if (s->error)
-        return NULL;
+    LWPOLY *poly;
     uint32_t i = 0;
-    LWPOLY *poly = lwpoly_construct_empty(s->srid, s->has_z, s->has_m);
+    uint32_t nrings = integer_from_wkb_state(s);
+    if (s->error) {
+        return NULL;
+    }
+    
+    poly = lwpoly_construct_empty(s->srid, s->has_z, s->has_m);
 
     LWDEBUGF(4,"Polygon has %d rings", nrings);
 
@@ -1062,12 +1172,15 @@ static LWPOLY* lwpoly_from_wkb_state(wkb_parse_state *s)
 */
 static LWPOLY* lwcurvepoly_from_wkb_state(wkb_parse_state *s)
 {
+    LWCURVEPOLY *cp;
+    LWGEOM *geom;
+    uint32_t i;
     uint32_t ngeoms = integer_from_wkb_state(s);
     if (s->error)
         return NULL;
-    LWCURVEPOLY *cp = lwcurvepoly_construct_empty(s->srid, s->has_z, s->has_m);
-    LWGEOM *geom = NULL;
-    uint32_t i;
+    cp = lwcurvepoly_construct_empty(s->srid, s->has_z, s->has_m);
+    geom = NULL;
+    
 
     /* Empty collection? */
     if ( ngeoms == 0 )
@@ -1151,22 +1264,24 @@ LWCOLLECTION* lwcollection_add_lwgeom(LWCOLLECTION *col, const LWGEOM *geom)
 */
 static LWCOLLECTION* lwcollection_from_wkb_state(wkb_parse_state *s)
 {
+    LWCOLLECTION *col;
+    LWGEOM *geom;
+    uint32_t i; 
     uint32_t ngeoms = integer_from_wkb_state(s);
     if (s->error)
         return NULL;
-    LWCOLLECTION *col = lwcollection_construct_empty(s->lwtype, s->srid, s->has_z, s->has_m);
-    LWGEOM *geom = NULL;
-    uint32_t i;
 
-    LWDEBUGF(4,"Collection has %d components", ngeoms);
+    col = lwcollection_construct_empty(s->lwtype, s->srid, s->has_z, s->has_m);
+    geom = NULL;
+    
 
     /* Empty collection? */
     if ( ngeoms == 0 )
         return col;
 
     /* Be strict in polyhedral surface closures */
-    if ( s->lwtype == POLYHEDRALSURFACETYPE )
-        s->check |= LW_PARSER_CHECK_ZCLOSURE;
+    //if ( s->lwtype == POLYHEDRALSURFACETYPE )
+    //    s->check |= LW_PARSER_CHECK_ZCLOSURE;
 
     for ( i = 0; i < ngeoms; i++ )
     {
@@ -1195,8 +1310,6 @@ LWGEOM* lwgeom_from_wkb_state(wkb_parse_state *s)
     char wkb_little_endian;
     uint32_t wkb_type;
 
-    //LWDEBUG(4,"Entered function");
-
     /* Fail when handed incorrect starting byte */
     wkb_little_endian = byte_from_wkb_state(s);
     if (s->error)
@@ -1204,7 +1317,7 @@ LWGEOM* lwgeom_from_wkb_state(wkb_parse_state *s)
     if( wkb_little_endian != 1 && wkb_little_endian != 0 )
     {
         LWDEBUG(4,"Leaving due to bad first byte!");
-        //lwerror("Invalid endian flag value encountered.");
+        lwerror("Invalid endian flag value encountered. =%c", wkb_little_endian);
         return NULL;
     }
 
@@ -1222,7 +1335,6 @@ LWGEOM* lwgeom_from_wkb_state(wkb_parse_state *s)
     wkb_type = integer_from_wkb_state(s);
     if (s->error)
         return NULL;
-    LWDEBUGF(4,"Got WKB type number: 0x%X", wkb_type);
     lwtype_from_wkb_state(s, wkb_type);
 
     /* Read the SRID, if necessary */
@@ -1264,10 +1376,91 @@ LWGEOM* lwgeom_from_wkb_state(wkb_parse_state *s)
         case POLYHEDRALSURFACETYPE:
         case TINTYPE:
         default:
-            lwerror("%s: Unsupported geometry type: %s", __func__, lwtype_name(s->lwtype));
+            lwerror("Unsupported geometry type: %s", lwtype_name(s->lwtype));
     }
 
     /* Return value to keep compiler happy. */
     return NULL;
+
+}
+
+/*
+ * Copies a point from the point array into the parameter point
+ * will set point's z=NO_Z_VALUE if pa is 2d
+ * will set point's m=NO_M_VALUE if pa is 3d or 2d
+ *
+ * NOTE: point is a real POINT3D *not* a pointer
+ */
+POINT4D
+getPoint4d(const POINTARRAY *pa, uint32_t n)
+{
+    POINT4D result;
+    getPoint4d_p(pa, n, &result);
+    return result;
+}
+
+/*
+ * Copies a point from the point array into the parameter point
+ * will set point's z=NO_Z_VALUE  if pa is 2d
+ * will set point's m=NO_M_VALUE  if pa is 3d or 2d
+ *
+ * NOTE: this will modify the point4d pointed to by 'point'.
+ *
+ * @return 0 on error, 1 on success
+ */
+int
+getPoint4d_p(const POINTARRAY *pa, uint32_t n, POINT4D *op)
+{
+    uint8_t *ptr;
+    int zmflag;
+
+    if ( ! pa )
+    {
+        lwerror("%s [%d] NULL POINTARRAY input", __FILE__, __LINE__);
+        return 0;
+    }
+
+    if ( n>=pa->npoints )
+    {
+        lwnotice("%s [%d] called with n=%d and npoints=%d", __FILE__, __LINE__, n, pa->npoints);
+        return 0;
+    }
+
+    LWDEBUG(5, "getPoint4d_p called.");
+
+    /* Get a pointer to nth point offset and zmflag */
+    ptr=getPoint_internal(pa, n);
+    zmflag=FLAGS_GET_ZM(pa->flags);
+
+    LWDEBUGF(5, "ptr %p, zmflag %d", ptr, zmflag);
+
+    switch (zmflag)
+    {
+        case 0: /* 2d  */
+            memcpy(op, ptr, sizeof(POINT2D));
+            op->m=NO_M_VALUE;
+            op->z=NO_Z_VALUE;
+            break;
+
+        case 3: /* ZM */
+            memcpy(op, ptr, sizeof(POINT4D));
+            break;
+
+        case 2: /* Z */
+            memcpy(op, ptr, sizeof(POINT3DZ));
+            op->m=NO_M_VALUE;
+            break;
+
+        case 1: /* M */
+            memcpy(op, ptr, sizeof(POINT3DM));
+            op->m=op->z; /* we use Z as temporary storage */
+            op->z=NO_Z_VALUE;
+            break;
+
+        default:
+            lwerror("Unknown ZM flag ??");
+            return 0;
+    }
+    return 1;
 
 }

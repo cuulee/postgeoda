@@ -1,0 +1,115 @@
+
+* Install Postgres 12 on Mac osx
+
+Installation Directory: /Library/PostgreSQL/12
+Server Installation Directory: /Library/PostgreSQL/12
+Data Directory: /Library/PostgreSQL/12/data
+Database Port: 5432
+Database Superuser: postgres
+Operating System Account: postgres
+Database Service: postgresql-12
+Command Line Tools Installation Directory: /Library/PostgreSQL/12
+pgAdmin4 Installation Directory: /Library/PostgreSQL/12/pgAdmin 4
+Stack Builder Installation Directory: /Library/PostgreSQL/12
+
+
+* Install PostGIS on Ubuntu 18.04
+sudo apt install postgis postgresql-10-postgis-2.4
+
+* Create user in PG
+
+sudo su - postgres -c "createuser john"
+
+
+* ERROR:  permission denied to create database
+
+alter user xun with createdb;
+
+* ERROR:  permission denied to set parameter "lc_messages"
+
+ASSIGNING SUPERUSER PERMISSION
+
+ALTER USER xun WITH SUPERUSER;
+
+* Test
+
+sudo su - postgres -c "psql -f /home/xun/Downloads/postgeoda/test/test_weights_queen.sql"
+PGPASSWORD=abc123 psql -U postgres -f /Users/xun/Github/postgeoda/test/test_weights_queen.sql
+
+* Install
+
+sudo cmake --build /home/xun/Github/libgeoda/cmake-build-release --target install
+
+codesign -f -s "Apple Development: tomatofj@mac.com" /Library/PostgreSQL/12/lib/postgresql/postgeoda-0.0.1.so
+
+
+* Parallel
+
+** OSX  Using Postgresql 11
+
+sudo su - postgres
+
+/Library/PostgreSQL/11/data/postgresql.conf
+
+max_worker_processes = 8                # (change requires restart)
+max_parallel_workers_per_gather = 2     # taken from max_parallel_workers
+max_parallel_workers = 8                # maximum number of max_worker_processes that
+
+*** restart
+sudo -u postgres pg_ctl -D /Library/PostgreSQL/11/data stop
+sudo -u postgres pg_ctl -D /Library/PostgreSQL/11/data start
+
+*** Dev
+
+Compile postgeoda, sql
+Run ./install.sh
+Disconnect server
+Reconnect server
+
+DROP EXTENSION IF EXISTS postgeoda;
+CREATE EXTENSION postgeoda;
+
+
+WITH tmp_w AS (
+	SELECT
+		geoda_weights_queen(ogc_fid, wkb_geometry) AS w
+	FROM nat
+)
+UPDATE nat ta SET queen_w = tb.w
+FROM (
+	SELECT
+		geoda_weights_getfids(w) AS fid,
+		geoda_weights_toset(w) AS wa
+	FROM tmp_w
+) AS tb
+WHERE ta.ogc_fid = tb.fid;
+
+--SELECT geoda_localmoran(nat.'hr60', nat_queen.w) FROM nat, nat_queen
+--SELECT geoda_weights_tojson(w) FROM nat_queen;
+--SELECT * FROM nat_queen;
+--SELECT geoda_weights_astext((geoda_weights_toset(w)) FROM nat_queen;
+--SELECT geoda_weights_tojson(w) FROM nat_queen;
+
+
+INSERT INTO weights
+SELECT
+	'nat_queen' as id,
+	geoda_weights_queen(ogc_fid, wkb_geometry) AS w
+FROM nat;
+
+SELECT
+	ogc_fid,
+	geoda_localmoran_b(
+		ogc_fid,
+		"hr60",
+		(SELECT geoda_weights_queen(ogc_fid, wkb_geometry) FROM nat)
+	) OVER ()
+FROM nat;
+
+
+--ALTER TABLE nat ADD COLUMN queen_w bytea;
+SELECT ogc_fid, geoda_localmoran("hr60", queen_w) OVER ()
+      FROM nat order by ogc_fid;
+
+      SELECT geoda_weights_queen('ogc_fid','wkb_geometry', 'queen_w', 'nat');
+      SELECT geoda_weights_astext(queen_w) FROM nat;

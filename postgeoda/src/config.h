@@ -2,10 +2,10 @@
 #define POSTGEODA_CONFIG_H
 
 #ifndef DEBUG
-#cmakedefine DEBUG
+/* #undef DEBUG */
 #endif
 
-#define POSTGIS_DEBUG_LEVEL 5
+#define POSTGIS_DEBUG_LEVEL 1
 
 /* Define to 1 to enable memory checks in pointarray management. */
 #undef PARANOIA_LEVEL

@@ -11,12 +11,12 @@
 /* Default reporters */
 static void default_noticereporter(const char *fmt, va_list ap);
 static void default_errorreporter(const char *fmt, va_list ap);
-lwreporter lwnotice_var = default_noticereporter;
-lwreporter lwerror_var = default_errorreporter;
+//lwreporter lwnotice_var = default_noticereporter;
+//lwreporter lwerror_var = default_errorreporter;
 
 /* Default logger */
 static void default_debuglogger(int level, const char *fmt, va_list ap);
-lwdebuglogger lwdebug_var = default_debuglogger;
+//lwdebuglogger lwdebug_var = default_debuglogger;
 
 void
 lwnotice(const char *fmt, ...)
@@ -26,7 +26,7 @@ lwnotice(const char *fmt, ...)
     va_start(ap, fmt);
 
     /* Call the supplied function */
-    (*lwnotice_var)(fmt, ap);
+    default_noticereporter(fmt, ap);
 
     va_end(ap);
 }
@@ -39,7 +39,7 @@ lwerror(const char *fmt, ...)
     va_start(ap, fmt);
 
     /* Call the supplied function */
-    (*lwerror_var)(fmt, ap);
+   default_errorreporter(fmt, ap);
 
     va_end(ap);
 }
@@ -52,7 +52,7 @@ lwdebug(int level, const char *fmt, ...)
     va_start(ap, fmt);
 
     /* Call the supplied function */
-    (*lwdebug_var)(level, fmt, ap);
+    default_debuglogger(level, fmt, ap);
 
     va_end(ap);
 }
@@ -91,25 +91,4 @@ default_noticereporter(const char *fmt, va_list ap)
     vsnprintf (msg, LW_MSG_MAXLEN, fmt, ap);
     msg[LW_MSG_MAXLEN]='\0';
     fprintf(stderr, "%s\n", msg);
-}
-
-void *
-lwalloc(size_t size)
-{
-    void *mem = lwalloc_var(size);
-    LWDEBUGF(5, "lwalloc: %d@%p", size, mem);
-    return mem;
-}
-
-void *
-lwrealloc(void *mem, size_t size)
-{
-    LWDEBUGF(5, "lwrealloc: %d@%p", size, mem);
-    return lwrealloc_var(mem, size);
-}
-
-void
-lwfree(void *mem)
-{
-    lwfree_var(mem);
 }

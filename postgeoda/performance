@@ -1,0 +1,9 @@
+*  Performance
+
+NAT:
+
+create queen weights: 70ms
+
+Chicago:
+
+create queen weights: 6s
