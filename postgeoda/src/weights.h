@@ -1,3 +1,10 @@
+/**
+ * Author: Xun Li <lixun910@gmail.com>
+ *
+ * Changes:
+ * 2021-1-27 Update to use libgeoda 0.0.6
+ */
+
 #ifndef __PG_WEIGHTS_HEADER__
 #define __PG_WEIGHTS_HEADER__
 

@@ -1,3 +1,10 @@
+/**
+ * Author: Xun Li <lixun910@gmail.com>
+ *
+ * Changes:
+ * 2021-1-27 Update to use libgeoda 0.0.6
+ */
+
 #include <postgres.h>
 #include <pg_config.h>
 #include <fmgr.h>
@@ -14,8 +21,8 @@ extern "C" {
 #endif
 
 
-#include "config.h"
-#include "geoms.h"
+#include <libgeoda/pg/config.h>
+#include <libgeoda/pg/geoms.h>
 #include "proxy.h"
 #include "weights.h"
 

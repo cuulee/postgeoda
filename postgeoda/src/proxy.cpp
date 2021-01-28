@@ -1,14 +1,21 @@
-#include <gda_sa.h>
-#include <LISA.h>
-#include <GeodaWeight.h>
-#include <GalWeight.h>
-#include <GeoDaSet.h>
-#include <GenUtils.h>
+/**
+ * Author: Xun Li <lixun910@gmail.com>
+ *
+ * Changes:
+ * 2021-1-27 Update to use libgeoda 0.0.6;
+ */
+
 #include <vector>
 
+#include <libgeoda/gda_sa.h>
+#include <libgeoda/sa/LISA.h>
+#include <libgeoda/weights/GalWeight.h>
+#include <libgeoda/GeoDaSet.h>
+#include <libgeoda/GenUtils.h>
+#include <libgeoda/pg/geoms.h>
+#include <libgeoda/pg/utils.h>
+
 #include "binweight.h"
-#include "geoms.h"
-#include "utils.h"
 #include "postgeoda.h"
 #include "proxy.h"
 
@@ -106,6 +113,16 @@ PGWeight* create_knn_weights(List *lfids, List *lwgeoms, int k)
     return w;
 }
 
+PGWeight* create_distance_weights(List *lfids, List *lwgeoms, double threshold)
+{
+    lwdebug(1,"Enter create_distance_weights.");
+    PostGeoDa* geoda = build_pg_geoda(lfids, lwgeoms);
+    PGWeight *w = geoda->CreateKnnWeights(k);
+    delete geoda;
+    lwdebug(1,"Exit create_distance_weights.");
+    return w;
+}
+
 void free_pglisa(PGLISA *lisa)
 {
     if (lisa)    {
@@ -185,7 +202,7 @@ GalWeight* create_weights(const uint8_t* bw)
     w->gal = gl;
     w->GetNbrStats();
 
-    lwdebug(1, "create_weights(). w->density=%f", w->GetDensity());
+    lwdebug(1, "create_weights(). sparsity=%f", w->GetSparsity());
 
     return w;
 }

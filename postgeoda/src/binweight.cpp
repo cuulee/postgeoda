@@ -1,4 +1,11 @@
-#include "utils.h"
+/**
+ * Author: Xun Li <lixun910@gmail.com>
+ *
+ * Changes:
+ * 2021-1-27 Update to use libgeoda 0.0.6
+ */
+
+#include <libgeoda/pg/utils.h>
 #include "binweight.h"
 
 
@@ -27,7 +34,7 @@ void BinElement::setNbrWeights(const std::vector<double> &nbrWeights) {
 }
 
 bool BinElement::checkNeighbor(uint32_t nbrIdx) {
-    // brutal force here , should be replace dby dict() check
+    // brutal force here , should be replaced by dict() check
     for (size_t i=0; i<nbr_ids.size(); ++i) {
         if (nbr_ids[i] == nbrIdx) {
             return true;
@@ -169,11 +176,11 @@ BinWeight::BinWeight(int N, const uint8_t** bw, const size_t* w_size)
     this->num_obs = N;
     this->GetNbrStats();
 
-    lwdebug(1, "create_weights_from_barray(). w->density=%f", this->GetDensity());
+    lwdebug(1, "create_weights_from_barray(). sparsity=%f", this->GetSparsity());
 }
 
 BinWeight::~BinWeight() {
-
+    // don't clean anything here, since the memory is managed by pg?
 }
 
 bool BinWeight::CheckNeighbor(int obs_idx, int nbr_idx) {
@@ -202,7 +209,7 @@ void BinWeight::Update(const std::vector<bool> &undefs) {
     // unimplemented
 }
 
-bool BinWeight::HasIsolations() {
+bool BinWeight::HasIsolates() {
 
     return false;
 }
@@ -244,7 +251,7 @@ void BinWeight::GetNbrStats() {
     }
 
     double n_edges = e_dict.size() / 2.0;
-    density = 100.0 * sum_nnbrs / (double)(num_obs * num_obs);
+    sparsity = 100.0 * sum_nnbrs / (double)(num_obs * num_obs);
 
     if (num_obs > 0) mean_nbrs = sum_nnbrs / (double)num_obs;
 

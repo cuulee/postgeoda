@@ -1,9 +1,16 @@
-#include <shape/centroid.h>
-#include <gda_weights.h>
-#include <GeodaWeight.h>
-#include <geofeature.h>
+/**
+ * Author: Xun Li <lixun910@gmail.com>
+ *
+ * Changes:
+ * 2021-1-27 Update to use libgeoda 0.0.6
+ */
 
-#include "utils.h"
+#include <libgeoda/shape/centroid.h>
+#include <libgeoda/gda_weights.h>
+#include <libgeoda/weights/GeodaWeight.h>
+#include <libgeoda/geofeature.h>
+#include <libgeoda/pg/utils.h>
+
 #include "postgeoda.h"
 #include "proxy.h"
 
@@ -198,7 +205,7 @@ void PostGeoDa::AddMultiPolygon(LWMPOLY *lw_mpoly) {
             bool is_hole = j > 0 ? true : false;
             poly->holes.push_back(is_hole);
 
-            LWDEBUGF(4, "Ring offset: %d", shpring);
+            lwdebug(4, "Ring offset: %d", shpring);
 
             for (k = 0; k < lw_mpoly->geoms[i]->rings[j]->npoints; k++) {
                 p4d = getPoint4d(lw_mpoly->geoms[i]->rings[j], k);
@@ -290,10 +297,21 @@ PGWeight *PostGeoDa::create_pgweight(GeoDaWeight* gda_w)
 
 PGWeight *PostGeoDa::CreateKnnWeights(int k) {
     lwdebug(1, "Enter PostGeoDa::CreateKnnWeights(k=%d).", k);
-    GeoDaWeight* gda_w = gda_knn_weights(this, k);
+
+    double power = 1.0;
+    bool is_inverse = false;
+    bool is_arc = false;
+    bool is_mile = true;
+    std::string kernel = "";
+    double bandwidth = 0;
+    bool adaptive_bandwidth = false;
+    bool use_kernel_diagonal = false;
+    std::string poly_id = "";
+    GeoDaWeight* gda_w = gda_knn_weights(this, k, power, is_inverse, is_arc, is_mile,
+                                         kernel, bandwidth, adaptive_bandwidth, use_kernel_diagonal, poly_id);
 
     lwdebug(1, "Enter CreateKnnWeights: min_nbrs=%d", gda_w->GetMinNbrs());
-    lwdebug(1, "Enter CreateKnnWeights: density=%f", gda_w->GetDensity());
+    lwdebug(1, "Enter CreateKnnWeights: sparsity=%f", gda_w->GetSparsity());
     lwdebug(1, "GeoDaWeight: gda_w=%x", gda_w);
 
     PGWeight* pg_w =  create_pgweight(gda_w);
@@ -320,7 +338,7 @@ PGWeight *PostGeoDa::CreateQueenWeights(int order, bool inc_lower, double precis
     GeoDaWeight* gda_w = gda_queen_weights(this, order, inc_lower, precision_threshold);
 
     lwdebug(1, "Enter CreateQueenWeights: min_nbrs=%d", gda_w->GetMinNbrs());
-    lwdebug(1, "Enter CreateQueenWeights: density=%f", gda_w->GetDensity());
+    lwdebug(1, "Enter CreateQueenWeights: sparsity=%f", gda_w->GetSparsity());
     lwdebug(1, "GeoDaWeight: gda_w=%x", gda_w);
 
     PGWeight* pg_w = create_pgweight(gda_w);

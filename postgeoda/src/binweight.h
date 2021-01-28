@@ -1,10 +1,39 @@
+/**
+ * Author: Xun Li <lixun910@gmail.com>
+ *
+ * The binary format of spatial weights
+ *
+ * char (1 bytes): weights type: 'a'->GAL 'w'->GWT
+ * uint32 (4 bytes): number of observations: N
+ * ...
+ * uint32 (4 bytes): index of i-th observation
+ * uint16 (2 bytes): number of neighbors of i-th observation (nn)
+ * uint32 (4 bytes x nn): neighbor id
+ * float (4 bytes x nn): weights value of each neighbor
+ * ...
+ *
+ * total size of GAL weights = 1 + 4 + (2 + nn *(4+4)) * N
+ * total size of GWT weights = 1 + 4 + (2 + nn * 4) * N
+ *
+ * e.g. 10 million observations, on average, each observation has nn neighbors:
+ * if nn=20, gal weights, total size = 0.76GB
+ * if nn=20, gwt weights, total size = 1.5GB
+ *
+ * e.g. 100 million observations, on average, each observation has nn neighbors:
+ * if nn=20, gal weights, total size = 7.6GB
+ * if nn=20, gwt weights, total size = 15.08GB
+ *
+ * Changes:
+ * 2021-1-27 Update to use libgeoda 0.0.6
+ */
+
 #ifndef __BINWEIGHT__
 #define __BINWEIGHT__
 
 #include <vector>
 #include <boost/unordered_map.hpp>
 
-#include <GeodaWeight.h>
+#include <libgeoda/weights/GeodaWeight.h>
 
 class BinElement {
 protected:
@@ -46,7 +75,7 @@ public:
     virtual const  std::vector<long> GetNeighbors(int obs_idx);
     virtual const  std::vector<double> GetNeighborWeights(int obs_idx);
     virtual void   Update(const std::vector<bool>& undefs);
-    virtual bool   HasIsolations();
+    virtual bool   HasIsolates();
     virtual void   GetNbrStats();
 
     virtual int    GetNbrSize(int obs_idx);

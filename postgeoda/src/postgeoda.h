@@ -1,11 +1,18 @@
+/**
+ * Author: Xun Li <lixun910@gmail.com>
+ *
+ * Changes:
+ * 2021-1-27 Update to use libgeoda 0.0.6
+ */
+
 #ifndef __POST_GEODA__
 #define __POST_GEODA__
 
 #include <vector>
 
-#include <geofeature.h>
-#include <gda_interface.h>
-#include "geoms.h"
+#include <libgeoda/geofeature.h>
+#include <libgeoda/gda_interface.h>
+#include <libgeoda/pg/geoms.h>
 
 struct PGWeight;
 
@@ -30,7 +37,6 @@ public:
     void AddNullGeometry();
 
     PGWeight* create_pgweight(GeoDaWeight* gda_w);
-
 
     PGWeight* CreateQueenWeights(int order, bool inc_lower, double precision_threshold);
     PGWeight* CreateKnnWeights(int k=4);

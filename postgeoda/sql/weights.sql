@@ -1,65 +1,19 @@
-CREATE FUNCTION pg_all_queries(OUT query TEXT, pid OUT TEXT)
-RETURNS SETOF RECORD
-AS 'MODULE_PATHNAME', 'pg_all_queries'
-LANGUAGE C STRICT VOLATILE;
+-------------------------------------
+-- Author: Xun Li <lixun910@gmail.com>-
+-- Date: 2021-1-27
+-- Changes:
+-- 2021-1-27 Add geoda_localjoincount_b()
+--------------------------------------
 
-
-
--- complain if script is sourced in psql, rather than via CREATE EXTENSION
-\echo Use "CREATE EXTENSION base36" to load this file. \quit
-CREATE FUNCTION base36_encode(digits int)
-RETURNS text
-LANGUAGE plpgsql IMMUTABLE STRICT
-  AS $$
-    DECLARE
-      chars char[];
-      ret varchar;
-      val int;
-    BEGIN
-      chars := ARRAY[
-                '0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f','g','h',
-                'i','j','k','l','m','n','o','p','q','r','s','t', 'u','v','w','x','y','z'
-              ];
-
-      val := digits;
-      ret := '';
-
-    WHILE val != 0 LOOP
-      ret := chars[(val % 36)+1] || ret;
-      val := val / 36;
-    END LOOP;
-
-    RETURN(ret);
-    END;
-  $$;
-
-create function
-    grt_sfunc( point, float8 )
-    returns
-        point
-as
-'MODULE_PATHNAME', 'grt_sfunc'
-    language
-        c
-    immutable;
-
-create function grt_finalfunc(agg_state point)
-    returns float8
-    immutable
-    language plpgsql
-as $$
-begin
-    return agg_state[1];
-end;
-$$;
-
-create aggregate greatest_running_total (float8)
-    (
-    sfunc = grt_sfunc,
-    stype = point,
-    finalfunc = grt_finalfunc
-    );
-
+-------------------------------------------------------------------
+-- geoda_weights_queen('ogc_fid', 'wkb_geometry', 'queen_w', 'nat')
+-- colName is the output column of weights, should be created
+-- beforehand
+-- DEPENDENCIES
+-- geoda_weights_getfids()
+-- geoda_weights_toset()
+-- geoda_weights_queen()
+-------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION geoda_weights_queen(
     fid VARCHAR, geom VARCHAR, colName VARCHAR, tableName VARCHAR
 ) RETURNS boolean
@@ -86,6 +40,10 @@ $$ LANGUAGE 'plpgsql';
 --------------------------------------
 -- geoda_weights_queen(ogc_fid, wkb_geometry)
 -- AGGREGATE
+-- DEPENDENCIES
+-- bytea_to_geom_transfn()
+-- geom_to_queenweights_finalfn()
+-- geoda_weights_queen()
 --------------------------------------
 CREATE OR REPLACE FUNCTION bytea_to_geom_transfn(
     internal,
@@ -183,37 +141,9 @@ CREATE AGGREGATE geoda_weights_knn(integer, bytea, integer) (
     finalfunc = geom_knn_weights_bin_finalfn
     );
 
---------------------------------------
--- geoda_localmoran_b(crm_prs, bytea)
---------------------------------------
-CREATE OR REPLACE FUNCTION geoda_localmoran_b(integer, anyelement, bytea)
-    RETURNS point
-AS 'MODULE_PATHNAME', 'local_moran_window_bytea'
-    LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
 
 --------------------------------------
--- geoda_localmoran(crm_prs, bytea)
---------------------------------------
-CREATE OR REPLACE FUNCTION geoda_localmoran(anyelement, bytea)
-    RETURNS point
-AS 'MODULE_PATHNAME', 'local_moran_window'
-    LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
-
---------------------------------------
--- geoda_localmoran_fast(crm_prs, bytea)
--- select "Crm_prs", wkb_geometry,
---  Array(select "Crm_prs" from guerry) as abc
--- 			  FROM guerry;
---------------------------------------
-CREATE OR REPLACE FUNCTION geoda_localmoran_fast(anyelement, bytea, anyarray)
-    RETURNS point
-AS 'MODULE_PATHNAME', 'local_moran_fast'
-    LANGUAGE 'c' PARALLEL SAFE COST 1000;
-
--- select ogc_fid, ARRAY["Crm_prs", "Crm_prp"] From guerry;
-
---------------------------------------
--- deprecated: geoda_weights_at()
+-- DEPRECATED: geoda_weights_at()
 --------------------------------------
 CREATE OR REPLACE FUNCTION geoda_weights_at(integer, bytea)
     RETURNS bytea
@@ -222,7 +152,7 @@ AS 'MODULE_PATHNAME', 'PGWeight_at'
                COST 100;
 
 --------------------------------------
--- deprecated: geoda_queenweights_set()
+-- DEPRECATED: geoda_queenweights_set()
 --------------------------------------
 CREATE OR REPLACE FUNCTION geoda_queenweights_set(bytea)
     RETURNS SETOF bytea

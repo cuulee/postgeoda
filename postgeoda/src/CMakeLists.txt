@@ -1,33 +1,35 @@
 set(SOURCES
-        geoms.c
         weights.c
         weights_knn.c
-        utils.c
         proxy.cpp
-        lisa.c
+        proxy_joincount.cpp
+        localmoran.c
+        joincount.c
         postgeoda.cpp
         binweight.cpp
-        ../../libgeoda_src/gda_weights.cpp
-        ../../libgeoda_src/SpatialIndAlgs.cpp
-        ../../libgeoda_src/weights/VoronoiUtils.cpp
-        ../../libgeoda_src/weights/PolysToContigWeights.cpp
-        ../../libgeoda_src/weights/GalWeight.cpp
-        ../../libgeoda_src/weights/GeodaWeight.cpp
-        ../../libgeoda_src/weights/GwtWeight.cpp
-        ../../libgeoda_src/gda_sa.cpp
-        ../../libgeoda_src/sa/LISA.cpp
-        ../../libgeoda_src/sa/BatchLISA.cpp
-        ../../libgeoda_src/sa/BatchLocalMoran.cpp
-        ../../libgeoda_src/sa/MultiGeary.cpp
-        ../../libgeoda_src/sa/MultiJoinCount.cpp
-        ../../libgeoda_src/sa/UniG.cpp
-        ../../libgeoda_src/sa/UniGeary.cpp
-        ../../libgeoda_src/sa/UniGstar.cpp
-        ../../libgeoda_src/sa/UniJoinCount.cpp
-        ../../libgeoda_src/sa/UniLocalMoran.cpp
-        ../../libgeoda_src/GenGeomAlgs.cpp
-        ../../libgeoda_src/GenUtils.cpp
-        )
+        ../../libgeoda/pg/utils.c
+        ../../libgeoda/pg/geoms.c
+        ../../libgeoda/gda_weights.cpp
+        ../../libgeoda/SpatialIndAlgs.cpp
+        ../../libgeoda/weights/VoronoiUtils.cpp
+        ../../libgeoda/weights/PolysToContigWeights.cpp
+        ../../libgeoda/weights/GalWeight.cpp
+        ../../libgeoda/weights/GeodaWeight.cpp
+        ../../libgeoda/weights/GwtWeight.cpp
+        ../../libgeoda/gda_sa.cpp
+        ../../libgeoda/sa/LISA.cpp
+        ../../libgeoda/sa/BatchLISA.cpp
+        ../../libgeoda/sa/BatchLocalMoran.cpp
+        ../../libgeoda/sa/MultiGeary.cpp
+        ../../libgeoda/sa/MultiJoinCount.cpp
+        ../../libgeoda/sa/UniG.cpp
+        ../../libgeoda/sa/UniGeary.cpp
+        ../../libgeoda/sa/UniGstar.cpp
+        ../../libgeoda/sa/UniJoinCount.cpp
+        ../../libgeoda/sa/UniLocalMoran.cpp
+        ../../libgeoda/GenGeomAlgs.cpp
+        ../../libgeoda/GenUtils.cpp
+)
 
 # Add test source code in Debug builds
 if (CMAKE_BUILD_TYPE MATCHES Debug)
@@ -36,8 +38,8 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
 endif (CMAKE_BUILD_TYPE MATCHES Debug)
 
 
-set(GEODA_CFLAGS "-D__USE_PTHREAD__")
-set(GEODA_CPPFLAGS "-D__USE_PTHREAD__")
+set(GEODA_CFLAGS "-D__USE_PTHREAD__ -D__PG_GEODA__")
+set(GEODA_CPPFLAGS "-D__USE_PTHREAD__ -D__PG_GEODA__")
 
 # postgres CFLAGS includes -Wdeclaration-after-statement which leads
 # to problems when compiling with -Werror since we aim for C99 and allow
@@ -73,12 +75,10 @@ if(PG_LDFLAGS)
     set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} ${PG_LDFLAGS}")
 endif()
 
-include_directories(${PROJECT_SOURCE_DIR}/src #postgeoda
-        ${PROJECT_BINARY_DIR}/src # config.h
-        ${CMAKE_SOURCE_DIR}/libgeoda_src # libgeoda
-        ${CMAKE_SOURCE_DIR}/libgeoda_src/sa # libgeoda
-        ${CMAKE_SOURCE_DIR}/libgeoda_src/weights # libgeoda
-        )
+include_directories(
+        ${PROJECT_SOURCE_DIR}/src #postgeoda
+        ${CMAKE_SOURCE_DIR} # libgeoda
+)
 include_directories(${CMAKE_SOURCE_DIR}/boost)
 include_directories(${PG_INCLUDEDIR_SERVER})
 include_directories(${PG_INCLUDEDIR})

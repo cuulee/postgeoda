@@ -1,3 +1,10 @@
+/**
+ * Author: Xun Li <lixun910@gmail.com>
+ *
+ * Changes:
+ * 2021-1-27 Update to use libgeoda 0.0.6
+ */
+
 #include <postgres.h>
 #include <pg_config.h>
 #include <fmgr.h>
@@ -14,60 +21,16 @@
 extern "C" {
 #endif
 
-#include "config.h"
-#include "geoms.h"
+#include <libgeoda/pg/config.h>
+#include <libgeoda/pg/geoms.h>
 #include "proxy.h"
+#include "lisa.h"
 
 #ifndef PG_MODULE_MAGIC
 PG_MODULE_MAGIC;
 #endif
 
-void check_if_numeric_type(Oid  valsType)
-{
-    if (valsType != INT2OID &&
-        valsType != INT4OID &&
-        valsType != INT8OID &&
-        valsType != FLOAT4OID &&
-        valsType != FLOAT8OID) {
-        ereport(ERROR, (errmsg("localmoran first parameter must be SMALLINT, INTEGER, BIGINT, REAL, or DOUBLE "
-                               "PRECISION "
-                               "values")));
-    }
-}
-
-double get_numeric_val(Oid valsType, Datum arg)
-{
-    double val = 0;
-    switch (valsType) {
-        case INT2OID:
-            val = DatumGetInt16(arg);
-            break;
-        case INT4OID:
-            val = DatumGetInt32(arg);
-            break;
-        case INT8OID:
-            val = DatumGetInt64(arg);
-            break;
-        case FLOAT4OID:
-            val = DatumGetFloat4(arg);
-            break;
-        case FLOAT8OID:
-            val = DatumGetFloat8(arg);
-            break;
-        default:
-            break;
-    }
-    return val;
-}
-
 Datum local_moran_window_bytea(PG_FUNCTION_ARGS);
-
-typedef struct {
-    bool	isdone;
-    bool	isnull;
-    Point  **result;
-    /* variable length */
-} lisa_context;
 
 PG_FUNCTION_INFO_V1(local_moran_window_bytea);
 Datum local_moran_window_bytea(PG_FUNCTION_ARGS) {
@@ -112,7 +75,7 @@ Datum local_moran_window_bytea(PG_FUNCTION_ARGS) {
         Oid  valsType = get_fn_expr_argtype(fcinfo->flinfo, 1);
         check_if_numeric_type(valsType);
 
-        double val, *r = lwalloc(sizeof(double) * N);
+        double *r = lwalloc(sizeof(double) * N);
         for (size_t i = 0; i < N; i++) {
             Datum arg = WinGetFuncArgInPartition(winobj, 1, i,
                                                  WINDOW_SEEK_HEAD, false, &isnull, &isout);
@@ -169,9 +132,9 @@ Datum local_moran_window(PG_FUNCTION_ARGS) {
         }
 
         bytea **wb_copy = lwalloc(sizeof(bytea*) * N);
-        uint8_t **w = lwalloc(sizeof(uint8_t *) * N);
+        const uint8_t **w = lwalloc(sizeof(uint8_t *) * N);
         size_t *w_size = lwalloc(sizeof(size_t) * N);
-        double val, *r = lwalloc(sizeof(double) * N);
+        double *r = lwalloc(sizeof(double) * N);
 
         for (size_t i = 0; i < N; i++) {
             Datum arg = WinGetFuncArgInPartition(winobj, 0, i,
@@ -287,6 +250,10 @@ Datum local_moran_fast(PG_FUNCTION_ARGS)
     PG_RETURN_POINT_P(r);
 }
 
+// Try to utilize the indexing of postgresql
+// Possible speed up when partitioning tables into different parts
+// that can be running on several nodes, and then being combined
+// into one result
 Datum postgis_index_supportfn(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(postgis_index_supportfn);
 Datum postgis_index_supportfn(PG_FUNCTION_ARGS)
