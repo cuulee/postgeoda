@@ -2,7 +2,7 @@
 -- Author: Xun Li <lixun910@gmail.com>-
 -- Date: 2021-1-27
 -- Changes:
--- 2021-1-27 Add geoda_localjoincount_b()
+-- 2021-1-27 Reorganize Weights SQLs
 --------------------------------------
 
 -------------------------------------------------------------------

@@ -113,3 +113,9 @@ SELECT ogc_fid, geoda_localmoran("hr60", queen_w) OVER ()
 
       SELECT geoda_weights_queen('ogc_fid','wkb_geometry', 'queen_w', 'nat');
       SELECT geoda_weights_astext(queen_w) FROM nat;
+
+4/1/2021
+
+pg_ctl -D /opt/homebrew/var/postgresql@11 start
+abc123 pwd
+

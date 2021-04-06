@@ -70,7 +70,26 @@ Point* pg_local_moran_fast(double val, const uint8_t* bw, size_t bw_size, int nu
                            int permutations, int rnd_seed);
 
 
+/**
+ * bridging PG to libgeoda::local_joincount
+ * @param N
+ * @param fids
+ * @param r
+ * @param bw
+ * @return
+ */
 Point** pg_local_joincount(int N, const int64* fids, const double* r, const uint8_t* bw);
+
+Point** pg_bivariate_local_joincount(int N, const int64* fids, const double* r1, const double* r2, const uint8_t* bw);
+/**
+ * briding PG to libgeoda::local_g
+ * @param N
+ * @param fids
+ * @param r
+ * @param bw
+ * @return
+ */
+Point** pg_local_g(int N, const int64* fids, const double* r, const uint8_t* bw);
 
 #ifdef __cplusplus
 }

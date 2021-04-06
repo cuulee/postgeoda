@@ -117,7 +117,7 @@ PGWeight* create_distance_weights(List *lfids, List *lwgeoms, double threshold)
 {
     lwdebug(1,"Enter create_distance_weights.");
     PostGeoDa* geoda = build_pg_geoda(lfids, lwgeoms);
-    PGWeight *w = geoda->CreateKnnWeights(k);
+    PGWeight *w = geoda->CreateKnnWeights(4);
     delete geoda;
     lwdebug(1,"Exit create_distance_weights.");
     return w;
@@ -247,7 +247,8 @@ Point** pg_local_moran(int N, const int64* fids, const double* r, const uint8_t*
     lwdebug(1, "pg_local_moran: gda_localmoran()");
     double significance_cutoff = 0.05;
     int nCPUs = 8, permutations = 999, last_seed_used = 123456789;
-    LISA* lisa = gda_localmoran(w, data, undefs, significance_cutoff, nCPUs, permutations, last_seed_used);
+    std::string perm_method = "complete";
+    LISA* lisa = gda_localmoran(w, data, undefs, significance_cutoff, nCPUs, permutations, perm_method, last_seed_used);
     const std::vector<double>& lisa_i = lisa->GetLISAValues();
     const std::vector<double>& lisa_p = lisa->GetLocalSignificanceValues();
 
@@ -292,7 +293,8 @@ Point** pg_local_moran_warray(int N, const double* r, const uint8_t** bw, const 
     lwdebug(1, "pg_local_moran_warray: gda_localmoran().");
     double significance_cutoff = 0.05;
     int nCPUs = 8, permutations = 999, last_seed_used = 123456789;
-    LISA* lisa = gda_localmoran(w, data, undefs, significance_cutoff, nCPUs, permutations, last_seed_used);
+    std::string perm_method = "complete";
+    LISA* lisa = gda_localmoran(w, data, undefs, significance_cutoff, nCPUs, permutations, perm_method, last_seed_used);
     const std::vector<double>& lisa_i = lisa->GetLISAValues();
     const std::vector<double>& lisa_p = lisa->GetLocalSignificanceValues();
 

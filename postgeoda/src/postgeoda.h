@@ -27,6 +27,7 @@ public:
     virtual int GetNumObs() const;
     virtual const std::vector<gda::PointContents*>& GetCentroids();
     virtual int GetMapType();
+    virtual std::string GetMapTypeName();
     virtual gda::MainMap& GetMainMap();
 
     void SetMapType(int geom_type);

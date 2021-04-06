@@ -7,8 +7,9 @@ set(SOURCES
         joincount.c
         postgeoda.cpp
         binweight.cpp
-        ../../libgeoda/pg/utils.c
-        ../../libgeoda/pg/geoms.c
+        ../../libgeoda/pg/utils.cpp
+        ../../libgeoda/pg/geoms.cpp
+        ../../libgeoda/gda_data.cpp
         ../../libgeoda/gda_weights.cpp
         ../../libgeoda/SpatialIndAlgs.cpp
         ../../libgeoda/weights/VoronoiUtils.cpp
@@ -29,7 +30,21 @@ set(SOURCES
         ../../libgeoda/sa/UniLocalMoran.cpp
         ../../libgeoda/GenGeomAlgs.cpp
         ../../libgeoda/GenUtils.cpp
-)
+        ../../libgeoda/knn/ANN.cpp
+        ../../libgeoda/knn/bd_fix_rad_search.cpp
+        ../../libgeoda/knn/bd_pr_search.cpp
+        ../../libgeoda/knn/bd_search.cpp
+        ../../libgeoda/knn/bd_tree.cpp
+        ../../libgeoda/knn/brute.cpp
+        ../../libgeoda/knn/kd_dump.cpp
+        ../../libgeoda/knn/kd_fix_rad_search.cpp
+        ../../libgeoda/knn/kd_pr_search.cpp
+        ../../libgeoda/knn/kd_search.cpp
+        ../../libgeoda/knn/kd_split.cpp
+        ../../libgeoda/knn/kd_tree.cpp
+        ../../libgeoda/knn/kd_util.cpp
+        ../../libgeoda/knn/perf.cpp
+        localg.c proxy_localg.cpp)
 
 # Add test source code in Debug builds
 if (CMAKE_BUILD_TYPE MATCHES Debug)

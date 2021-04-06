@@ -58,6 +58,17 @@ int PostGeoDa::GetMapType() {
     return this->map_type;
 }
 
+std::string PostGeoDa::GetMapTypeName()
+{
+    if (this->GetMapType() == gda::POINT_TYP) {
+        return "point";
+    } else if (this->GetMapType() == gda::POLYGON) {
+        return "polygon";
+    } else {
+        return "not supported";
+    }
+}
+
 gda::MainMap & PostGeoDa::GetMainMap() {
     return this->main_map;
 }
