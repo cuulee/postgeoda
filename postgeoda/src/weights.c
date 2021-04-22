@@ -42,6 +42,7 @@ typedef struct CollectionBuildState
 {
     List *geoms;  /* collected geometries */
     List *ogc_fids;
+    bool is_queen;
     int order;
     bool inc_lower;
     double precision_threshold;
@@ -358,10 +359,11 @@ Datum bytea_to_geom_transfn(PG_FUNCTION_ARGS)
 
     // Get the actual type OID of a specific function argument (counting from 0)
     Datum argType = get_fn_expr_argtype(fcinfo->flinfo, 1);
-    if (argType == InvalidOid)
-		ereport(ERROR,
-		        (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-		         errmsg("could not determine input data type")));
+    if (argType == InvalidOid) {
+        ereport(ERROR,
+                (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+                        errmsg("could not determine input data type")));
+    }
     
     MemoryContext aggcontext;
     if (!AggCheckCallContext(fcinfo, &aggcontext)) {
@@ -375,6 +377,7 @@ Datum bytea_to_geom_transfn(PG_FUNCTION_ARGS)
 		state = (CollectionBuildState*)MemoryContextAlloc(aggcontext, sizeof(CollectionBuildState));
 		state->geoms = NULL;
 		state->ogc_fids = NULL;
+		state->is_queen = true;
 		state->order = 1;
 		state->inc_lower = false;
 		state->precision_threshold = 0;
@@ -390,30 +393,48 @@ Datum bytea_to_geom_transfn(PG_FUNCTION_ARGS)
     /* Take a copy of the geometry into the aggregate context */
     MemoryContext old = MemoryContextSwitchTo(aggcontext);
 
-    if (!PG_ARGISNULL(2)) {
-        bytea *bytea_wkb = PG_GETARG_BYTEA_P(2);
+    int arg_index = 1;
+
+    // fid
+    if (!PG_ARGISNULL(arg_index)) {
+        idx = PG_GETARG_INT64(arg_index);
+    }
+    arg_index += 1;
+
+    // the_geom
+    if (!PG_ARGISNULL(arg_index)) {
+        bytea *bytea_wkb = PG_GETARG_BYTEA_P(arg_index);
         uint8_t *wkb = (uint8_t *) VARDATA(bytea_wkb);
         LWGEOM *lwgeom = lwgeom_from_wkb(wkb, VARSIZE_ANY_EXHDR(bytea_wkb), LW_PARSER_CHECK_ALL);
         geom = lwgeom_clone_deep(lwgeom);
         lwgeom_free(lwgeom);
         //PG_FREE_IF_COPY(bytea_wkb, 0);
     }
+    arg_index += 1;
 
-    if (!PG_ARGISNULL(1)) {
-        idx = PG_GETARG_INT64(1);
+    // is_queen
+    if (!PG_ARGISNULL(arg_index)) {
+        state->inc_lower = PG_GETARG_BOOL(arg_index);
     }
+    arg_index += 1;
 
-    if (!PG_ARGISNULL(3)) {
-        state->order = PG_GETARG_INT32(3);
+    // order_of_contiguity
+    if (!PG_ARGISNULL(arg_index)) {
+        state->order = PG_GETARG_INT32(arg_index);
     }
+    arg_index += 1;
 
-    if (!PG_ARGISNULL(4)) {
-        state->inc_lower = PG_GETARG_BOOL(4);
+    // include_lower_order
+    if (!PG_ARGISNULL(arg_index)) {
+        state->inc_lower = PG_GETARG_BOOL(arg_index);
     }
+    arg_index += 1;
 
-    if (!PG_ARGISNULL(5)) {
-        state->precision_threshold = PG_GETARG_FLOAT4(5);
+    // precision_threshold
+    if (!PG_ARGISNULL(arg_index)) {
+        state->precision_threshold = PG_GETARG_FLOAT4(arg_index);
     }
+    arg_index += 1;
 
     /* Initialize or append to list as necessary */
     if (state->geoms) {
@@ -586,21 +607,23 @@ Datum weights_bytea_tojson(PG_FUNCTION_ARGS)
  * @param fcinfo
  * @return bytea
  */
-Datum geom_to_queenweights_finalfn(PG_FUNCTION_ARGS);
-PG_FUNCTION_INFO_V1(geom_to_queenweights_finalfn);
+Datum geom_to_contweights_finalfn(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(geom_to_contweights_finalfn);
 
-Datum geom_to_queenweights_finalfn(PG_FUNCTION_ARGS)
+Datum geom_to_contweights_finalfn(PG_FUNCTION_ARGS)
 {
     CollectionBuildState *p;
 
-    lwdebug(1,"Enter geom_to_queenweights_finalfn.");
+    lwdebug(1,"Enter geom_to_contweights_finalfn.");
 
-    if (PG_ARGISNULL(0))
+    if (PG_ARGISNULL(0)) {
         PG_RETURN_NULL();   /* returns null iff no input values */
+    }
 
+    // get State from aggregate internal function
     p = (CollectionBuildState*) PG_GETARG_POINTER(0);
 
-    PGWeight* w = create_queen_weights(p->ogc_fids, p->geoms, p->order, p->inc_lower,
+    PGWeight* w = create_cont_weights(p->ogc_fids, p->geoms, p->is_queen, p->order, p->inc_lower,
             p->precision_threshold);
 
     size_t buf_size = 0;
@@ -616,7 +639,7 @@ Datum geom_to_queenweights_finalfn(PG_FUNCTION_ARGS)
     /* Clean up and return */
     lwfree(w_bytes);
 
-    lwdebug(1,"Exit geom_to_queenweights_finalfn.");
+    lwdebug(1,"Exit geom_to_contweights_finalfn.");
     PG_RETURN_BYTEA_P(result);
 }
 

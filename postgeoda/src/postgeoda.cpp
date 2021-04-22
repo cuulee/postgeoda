@@ -334,7 +334,7 @@ PGWeight *PostGeoDa::CreateKnnWeights(int k) {
 }
 
 
-PGWeight *PostGeoDa::CreateQueenWeights(int order, bool inc_lower, double precision_threshold) {
+PGWeight *PostGeoDa::CreateContWeights(bool is_queen, int order, bool inc_lower, double precision_threshold) {
     lwdebug(1, "Enter PostGeoDa::CreateQueenWeights().");
     double shp_min_x = (double)this->main_map.bbox_x_min;
     double shp_max_x = (double)this->main_map.bbox_x_max;
@@ -346,7 +346,13 @@ PGWeight *PostGeoDa::CreateQueenWeights(int order, bool inc_lower, double precis
     lwdebug(3, "Enter PostGeoDa::CreateQueenWeights() shp_min_y=%f", shp_min_y);
     lwdebug(3, "Enter PostGeoDa::CreateQueenWeights() shp_max_y=%f", shp_max_y);
 
-    GeoDaWeight* gda_w = gda_queen_weights(this, order, inc_lower, precision_threshold);
+    GeoDaWeight* gda_w = 0;
+
+    if (is_queen) {
+        gda_w = gda_queen_weights(this, order, inc_lower, precision_threshold);
+    } else {
+        gda_w = gda_rook_weights(this, order, inc_lower, precision_threshold);
+    }
 
     lwdebug(1, "Enter CreateQueenWeights: min_nbrs=%d", gda_w->GetMinNbrs());
     lwdebug(1, "Enter CreateQueenWeights: sparsity=%f", gda_w->GetSparsity());

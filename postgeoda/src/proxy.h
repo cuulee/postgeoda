@@ -37,16 +37,17 @@ typedef struct PGWeight
 void free_pgweight(PGWeight *w);
 
 /**
- * Queen contiguity weights functions bridging PG and libgeoda
+ * Contiguity (queen/rook) weights functions bridging PG and libgeoda
  *
  * @param fids
  * @param geoms
+ * @param is_queen
  * @param order
  * @param inc_lower
  * @param precision_threshold
  * @return
  */
-PGWeight* create_queen_weights(List *fids, List *geoms, int order, bool inc_lower, double precision_threshold);
+PGWeight* create_cont_weights(List *fids, List *geoms, bool is_queen, int order, bool inc_lower, double precision_threshold);
 
 /**
  * knn weights functions bridging PG and libgeoda::knn_weights

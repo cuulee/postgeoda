@@ -39,7 +39,7 @@ public:
 
     PGWeight* create_pgweight(GeoDaWeight* gda_w);
 
-    PGWeight* CreateQueenWeights(int order, bool inc_lower, double precision_threshold);
+    PGWeight* CreateContWeights(bool is_queen, int order, bool inc_lower, double precision_threshold);
     PGWeight* CreateKnnWeights(int k=4);
 
 protected:

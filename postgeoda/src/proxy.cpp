@@ -37,6 +37,13 @@ void free_pgweight(PGWeight *w)
     }
 }
 
+/**
+ * Create geoda instance from the_geom and fids of the table
+ *
+ * @param lfids
+ * @param lwgeoms
+ * @return
+ */
 PostGeoDa* build_pg_geoda(List *lfids, List *lwgeoms) {
     lwdebug(1, "Enter build_pg_geoda.");
 
@@ -48,21 +55,21 @@ PostGeoDa* build_pg_geoda(List *lfids, List *lwgeoms) {
     std::vector<uint32_t> fids(nelems, 0);
     foreach(l, lfids) {
         fids[count] = lfirst_int(l);
-        lwdebug(5, "build_pg_geoad fids=%d", fids[count]);
+        lwdebug(5, "build_pg_geoda fids=%d", fids[count]);
         count++;
     }
 
-    lwdebug(1, "build_pg_geoad: nelems=%d", nelems);
+    lwdebug(1, "build_pg_geoda: nelems=%d", nelems);
     PostGeoDa *geoda = new PostGeoDa(nelems, fids);
 
     foreach (l, lwgeoms) {
         LWGEOM *lwgeom = (LWGEOM *) (lfirst(l));
         if (lwgeom_is_empty(lwgeom)) {
-            lwdebug(4, "build_pg_geoad: addnullgeometry()");
+            lwdebug(4, "build_pg_geoda: addnullgeometry()");
             geoda->AddNullGeometry();
         } else {
             if (!b_maptype) {
-                lwdebug(1, "build_pg_geoad: geom_type=%d", lwgeom->type);
+                lwdebug(1, "build_pg_geoda: geom_type=%d", lwgeom->type);
                 b_maptype = true;
                 geoda->SetMapType(lwgeom->type);
             }
@@ -93,11 +100,11 @@ PostGeoDa* build_pg_geoda(List *lfids, List *lwgeoms) {
     return geoda;
 }
 
-PGWeight* create_queen_weights(List *lfids, List *lwgeoms, int order, bool inc_lower, double precision_threshold)
+PGWeight* create_cont_weights(List *lfids, List *lwgeoms, bool is_queen, int order, bool inc_lower, double precision_threshold)
 {
     lwdebug(1,"Enter create_queen_weights.");
     PostGeoDa* geoda = build_pg_geoda(lfids, lwgeoms);
-    PGWeight *w = geoda->CreateQueenWeights(order, inc_lower, precision_threshold);
+    PGWeight *w = geoda->CreateContWeights(is_queen, order, inc_lower, precision_threshold);
     delete geoda;
     lwdebug(1,"Exit create_queen_weights.");
     return w;
