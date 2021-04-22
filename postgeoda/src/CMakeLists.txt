@@ -1,12 +1,4 @@
 set(SOURCES
-        weights.c
-        weights_knn.c
-        proxy.cpp
-        proxy_joincount.cpp
-        localmoran.c
-        joincount.c
-        postgeoda.cpp
-        binweight.cpp
         ../../libgeoda/pg/utils.cpp
         ../../libgeoda/pg/geoms.cpp
         ../../libgeoda/gda_data.cpp
@@ -44,7 +36,19 @@ set(SOURCES
         ../../libgeoda/knn/kd_tree.cpp
         ../../libgeoda/knn/kd_util.cpp
         ../../libgeoda/knn/perf.cpp
-        localg.c proxy_localg.cpp)
+        weights.c
+        weights_knn.c
+        localmoran.c
+        joincount.c
+        localg.c
+        quantilelisa.c
+        proxy.cpp
+        postgeoda.cpp
+        binweight.cpp
+        proxy_joincount.cpp
+        proxy_localg.cpp
+        proxy_quantilelisa.cpp
+        )
 
 # Add test source code in Debug builds
 if (CMAKE_BUILD_TYPE MATCHES Debug)
@@ -53,8 +57,8 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
 endif (CMAKE_BUILD_TYPE MATCHES Debug)
 
 
-set(GEODA_CFLAGS "-D__USE_PTHREAD__ -D__PG_GEODA__")
-set(GEODA_CPPFLAGS "-D__USE_PTHREAD__ -D__PG_GEODA__")
+set(GEODA_CFLAGS "-D__USE_PTHREAD__ -D__PGGEODA__")
+set(GEODA_CPPFLAGS "-D__USE_PTHREAD__ -D__PGGEODA__")
 
 # postgres CFLAGS includes -Wdeclaration-after-statement which leads
 # to problems when compiling with -Werror since we aim for C99 and allow

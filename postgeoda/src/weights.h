@@ -12,6 +12,8 @@
 extern "C" {
 #endif
 
+#include <libgeoda/pg/utils.h>
+
 #define BUFSIZE 64
 
 static inline text *weights_to_json(bytea *bw) {

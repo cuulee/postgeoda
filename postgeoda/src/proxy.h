@@ -36,14 +36,41 @@ typedef struct PGWeight
 
 void free_pgweight(PGWeight *w);
 
-// Weights functions bridging PG and libgeoda
+/**
+ * Queen contiguity weights functions bridging PG and libgeoda
+ *
+ * @param fids
+ * @param geoms
+ * @param order
+ * @param inc_lower
+ * @param precision_threshold
+ * @return
+ */
 PGWeight* create_queen_weights(List *fids, List *geoms, int order, bool inc_lower, double precision_threshold);
 
+/**
+ * knn weights functions bridging PG and libgeoda::knn_weights
+ *
+ * @param fids
+ * @param geoms
+ * @param k
+ * @return
+ */
 PGWeight* create_knn_weights(List *fids, List *geoms, int k);
 
+/**
+ * distance weights functions bridging PG and libgeoda::distance_weights
+ *
+ * @param fids
+ * @param geoms
+ * @param threshold
+ * @return
+ */
 PGWeight* create_distance_weights(List *fids, List *geoms, double threshold);
 
-// Structure to exchange lisa data between PG and libgeoda
+/**
+ * Structure to exchange lisa data between PG and libgeoda
+ */
 typedef struct PGLISA
 {
     int32_t n;
@@ -51,9 +78,13 @@ typedef struct PGLISA
     double *pvalues; // pseudo p-values
 } PGLISA;
 
+/**
+ * function to free PGLISA object
+ *
+ * @param lisa
+ */
 void free_pglisa(PGLISA *lisa);
 
-// LISA functions bridging PG and libgeoda
 /**
  *
  * @param N
@@ -80,9 +111,19 @@ Point* pg_local_moran_fast(double val, const uint8_t* bw, size_t bw_size, int nu
  */
 Point** pg_local_joincount(int N, const int64* fids, const double* r, const uint8_t* bw);
 
-Point** pg_bivariate_local_joincount(int N, const int64* fids, const double* r1, const double* r2, const uint8_t* bw);
 /**
- * briding PG to libgeoda::local_g
+ * briding PG to libgeoda::local_bijoincount
+ * @param N
+ * @param fids
+ * @param r1
+ * @param r2
+ * @param bw
+ * @return
+ */
+Point** pg_bivariate_local_joincount(int N, const int64* fids, const double* r1, const double* r2, const uint8_t* bw);
+
+/**
+ * bridging PG to libgeoda::local_g
  * @param N
  * @param fids
  * @param r
@@ -90,6 +131,30 @@ Point** pg_bivariate_local_joincount(int N, const int64* fids, const double* r1,
  * @return
  */
 Point** pg_local_g(int N, const int64* fids, const double* r, const uint8_t* bw);
+
+/**
+ * bridging PG to libgeoda::local_start
+ *
+ * @param N
+ * @param fids
+ * @param r
+ * @param bw
+ * @return
+ */
+Point** pg_local_gstar(int N, const int64* fids, const double* r, const uint8_t* bw);
+
+/**
+ * briding PG to libgeoda::gda_quantilelisa()
+ *
+ * @param k
+ * @param quantile
+ * @param N the number of objects
+ * @param fids the feature_id (fids) of query objects
+ * @param r real values
+ * @param bw Binary weights
+ * @return
+ */
+Point** pg_quantilelisa(int k, int quantile, int N, const double* r, const uint8_t** bw, const size_t* w_size);
 
 #ifdef __cplusplus
 }

@@ -21,7 +21,7 @@
 extern "C" {
 #endif
 
-#include <libgeoda/pg/config.h>
+#include <libgeoda/pg/utils.h>
 #include <libgeoda/pg/geoms.h>
 #include "proxy.h"
 #include "lisa.h"
@@ -112,13 +112,11 @@ Datum local_moran_window(PG_FUNCTION_ARGS) {
     lisa_context *context;
     int64 curpos, rowcount;
 
-    Oid  valsType = get_fn_expr_argtype(fcinfo->flinfo, 0);
+    Oid valsType = get_fn_expr_argtype(fcinfo->flinfo, 0);
     check_if_numeric_type(valsType);
 
     rowcount = WinGetPartitionRowCount(winobj);
-    context = (lisa_context *)
-            WinGetPartitionLocalMemory(winobj,
-                                       sizeof(lisa_context) + sizeof(int) * rowcount);
+    context = (lisa_context *)WinGetPartitionLocalMemory(winobj,sizeof(lisa_context) + sizeof(int) * rowcount);
 
     if (!context->isdone) {
         bool isnull, isout;
@@ -131,10 +129,11 @@ Datum local_moran_window(PG_FUNCTION_ARGS) {
             PG_RETURN_NULL();
         }
 
-        bytea **wb_copy = lwalloc(sizeof(bytea*) * N);
-        const uint8_t **w = lwalloc(sizeof(uint8_t *) * N);
+        uint8_t **w = lwalloc(sizeof(uint8_t *) * N);
         size_t *w_size = lwalloc(sizeof(size_t) * N);
         double *r = lwalloc(sizeof(double) * N);
+
+        lwdebug(0, "Init local_moran_window. N=%d", N);
 
         for (size_t i = 0; i < N; i++) {
             Datum arg = WinGetFuncArgInPartition(winobj, 0, i,
@@ -142,12 +141,11 @@ Datum local_moran_window(PG_FUNCTION_ARGS) {
             r[i] = get_numeric_val(valsType, arg);
             Datum arg1 = WinGetFuncArgInPartition(winobj, 1, i,
                                                   WINDOW_SEEK_HEAD, false, &isnull, &isout);
-            //bytea *w_bytea = DatumGetByteaP(arg1);
-            bytea *w_bytea = (bytea*)PG_DETOAST_DATUM_COPY(arg1);
+            bytea *w_bytea = DatumGetByteaP(arg1);
+            //bytea *w_bytea = (bytea*)PG_DETOAST_DATUM_COPY(arg1);
             uint8_t *w_val = (uint8_t *) VARDATA(w_bytea);
             w[i] = w_val;
-            w_size[i] = VARSIZE_ANY_EXHDR(w_val);
-            wb_copy[i] = w_bytea;
+            w_size[i] = VARSIZE_ANY_EXHDR(w_bytea);
         }
 
         lwdebug(1, "Enter local_moran_window. N=%d", N);
@@ -158,12 +156,11 @@ Datum local_moran_window(PG_FUNCTION_ARGS) {
         context->isdone = true;
 
         // clean
+        lwdebug(1, "Clean local_moran_window.");
         lwfree(r);
-        for (size_t i=0; i<N; ++i) PG_FREE_IF_COPY(wb_copy[i], 0);
-        lwfree(wb_copy);
         lwfree(w_size);
 
-        lwdebug(1, "Exit local_moran_window. free_lisa() done.");
+        lwdebug(1, "Exit local_moran_window.");
     }
 
     if (context->isnull)
@@ -258,7 +255,7 @@ Datum postgis_index_supportfn(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(postgis_index_supportfn);
 Datum postgis_index_supportfn(PG_FUNCTION_ARGS)
 {
-    Node *rawreq = (Node *) PG_GETARG_POINTER(0);
+    //Node *rawreq = (Node *) PG_GETARG_POINTER(0);
     Node *ret = NULL;
     PG_RETURN_POINTER(ret);
 }

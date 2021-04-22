@@ -22,7 +22,7 @@
 extern "C" {
 #endif
 
-#include <libgeoda/pg/config.h>
+#include <libgeoda/pg/utils.h>
 #include <libgeoda/pg/geoms.h>
 #include "proxy.h"
 #include "lisa.h"

@@ -293,7 +293,7 @@ Point** pg_local_moran_warray(int N, const double* r, const uint8_t** bw, const 
     lwdebug(1, "pg_local_moran_warray: gda_localmoran().");
     double significance_cutoff = 0.05;
     int nCPUs = 8, permutations = 999, last_seed_used = 123456789;
-    std::string perm_method = "complete";
+    std::string perm_method = "lookup";
     LISA* lisa = gda_localmoran(w, data, undefs, significance_cutoff, nCPUs, permutations, perm_method, last_seed_used);
     const std::vector<double>& lisa_i = lisa->GetLISAValues();
     const std::vector<double>& lisa_p = lisa->GetLocalSignificanceValues();

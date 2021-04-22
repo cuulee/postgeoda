@@ -28,7 +28,7 @@ static inline void check_if_numeric_type(Oid  valsType)
         valsType != INT8OID &&
         valsType != FLOAT4OID &&
         valsType != FLOAT8OID) {
-        ereport(ERROR, (errmsg("localmoran first parameter must be SMALLINT, INTEGER, BIGINT, REAL, or DOUBLE "
+        ereport(ERROR, (errmsg("first parameter of LISA function must be SMALLINT, INTEGER, BIGINT, REAL, or DOUBLE "
                                "PRECISION values")));
     }
 }

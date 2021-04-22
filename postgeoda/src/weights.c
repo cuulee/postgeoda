@@ -114,7 +114,7 @@ Datum weights_bytea_to_set(PG_FUNCTION_ARGS)
     //  do when there is more left to send
     if (call_cntr < max_calls) {
         // read for every observation
-        const uint8_t *pos = w_fct->pos;
+        uint8_t *pos = w_fct->pos;
         // read idx
         pos += sizeof(uint32_t);
         // read number of neighbors
@@ -204,7 +204,7 @@ Datum weights_bytea_getfids(PG_FUNCTION_ARGS)
     //  do when there is more left to send
     if (call_cntr < max_calls) {
         // read for every observation
-        const uint8_t *pos = w_fct->pos;
+        uint8_t *pos = w_fct->pos;
         // read idx
         memcpy(&fid, pos, sizeof(uint16_t));
         pos += sizeof(uint32_t);
@@ -869,7 +869,7 @@ Datum PGWeight_to_set(PG_FUNCTION_ARGS)
 
         WeightsAccessState* new_ctx = (WeightsAccessState *)fmgr_info->fn_extra;
 
-        const uint8_t *pos = w; // start position
+        uint8_t *pos = w; // start position
         char w_type;
         memcpy(&w_type, pos, sizeof(char));
         new_ctx->w_type = w_type;
@@ -893,11 +893,11 @@ Datum PGWeight_to_set(PG_FUNCTION_ARGS)
     }
 
     if( ctx->ctx_current < ctx->ctx_count ) {
-        const uint8_t *pos = ctx->w;
+        uint8_t *pos = ctx->w;
 
-        uint32_t idx = 0;
+        //uint32_t idx = 0;
         uint16_t n_nbrs = 0;
-        uint32_t n_id=0;
+        //uint32_t n_id=0;
 
         const uint8_t *start = pos;
 
@@ -959,7 +959,7 @@ grt_sfunc(PG_FUNCTION_ARGS)
         new_agg_state->y = el;
         PG_RETURN_POINTER(new_agg_state);
     }
-    Point *agg_state = PG_GETARG_POINTER(0);
+    Point *agg_state = (Point*)PG_GETARG_POINTER(0);
 
     new_agg_state->x = agg_state->x + el;
     if(new_agg_state->x > agg_state->y) {
@@ -971,7 +971,7 @@ grt_sfunc(PG_FUNCTION_ARGS)
     PG_RETURN_POINTER(new_agg_state);
 }
 
-
+/*
 uint32_t array_nelems_not_null(ArrayType* array) {
     ArrayIterator iterator;
     Datum value;
@@ -986,6 +986,7 @@ uint32_t array_nelems_not_null(ArrayType* array) {
 
     return nelems_not_null;
 }
+ */
 
 Datum pg_all_queries(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(pg_all_queries);
@@ -1003,29 +1004,24 @@ Datum PGISDirectFunctionCall1(PGFunction func, Datum arg1);
 Datum
 PGISDirectFunctionCall1(PGFunction func, Datum arg1)
 {
+    Datum result = 0;
+
 #if POSTGIS_PGSQL_VERSION < 120
     /*
     FunctionCallInfoData fcinfo;
-    Datum           result;
-
-
     InitFunctionCallInfoData(fcinfo, NULL, 1, InvalidOid, NULL, NULL);
-
-
     fcinfo.arg[0] = arg1;
     fcinfo.argnull[0] = false;
 
     result = (*func) (&fcinfo);
 
     // check for null result, returning a "NULL" Datum if indicated
-    if (fcinfo.isnull)
+    if (fcinfo.isnull) {
         return (Datum) 0;
-
-    return result;
+    }
      */
 #else
     LOCAL_FCINFO(fcinfo, 1);
-	Datum result;
 
 	InitFunctionCallInfoData(*fcinfo, NULL, 1, InvalidOid, NULL, NULL);
 
@@ -1035,11 +1031,12 @@ PGISDirectFunctionCall1(PGFunction func, Datum arg1)
 	result = (*func)(fcinfo);
 
 	/* Check for null result, returning a "NULL" Datum if indicated */
-	if (fcinfo->isnull)
+	if (fcinfo->isnull) {
 		return (Datum)0;
+	}
 
-	return result;
 #endif /* POSTGIS_PGSQL_VERSION < 120 */
+    return result;
 }
 
 

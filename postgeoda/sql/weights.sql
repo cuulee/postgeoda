@@ -3,29 +3,30 @@
 -- Date: 2021-1-27
 -- Changes:
 -- 2021-1-27 Reorganize Weights SQLs
+-- 2021-4-10 Expose queen_weights() as the major interface for queen weights creation
 --------------------------------------
 
 -------------------------------------------------------------------
--- geoda_weights_queen('ogc_fid', 'wkb_geometry', 'queen_w', 'nat')
--- colName is the output column of weights, should be created
--- beforehand
+-- queen_weights('ogc_fid', 'wkb_geometry', 'queen_w', 'nat')
 -- DEPENDENCIES
 -- geoda_weights_getfids()
 -- geoda_weights_toset()
 -- geoda_weights_queen()
 -------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION geoda_weights_queen(
+CREATE OR REPLACE FUNCTION queen_weights(
     fid VARCHAR, geom VARCHAR, colName VARCHAR, tableName VARCHAR
-) RETURNS boolean
+) RETURNS
+    TABLE (w bytea)
 AS $$
 BEGIN
-    PERFORM '
+    EXECUTE 'ALTER TABLE '|| tableName ||' ADD COLUMN IF NOT EXISTS '|| colName ||' bytea;';
+    EXECUTE '
         WITH tmp_w AS (
             SELECT
-                geoda_weights_queen(' || fid || ', ' || geom || ') AS w
-            FROM ' || tableName || '
+                geoda_weights_queen('|| fid ||', '|| geom ||') AS w
+            FROM '|| tableName ||'
         )
-        UPDATE ' || tableName || ' ta SET ' || colName || ' = tb.w
+        UPDATE '|| tableName ||' ta SET '|| colName ||' = tb.w
         FROM (
                  SELECT
                      geoda_weights_getfids(w) AS fid,
@@ -33,17 +34,51 @@ BEGIN
                  FROM tmp_w
              ) AS tb
         WHERE ta.'||fid||' = tb.fid';
-    RETURN true;
+    RETURN QUERY EXECUTE
+        'SELECT '|| geom ||' w FROM ' || tableName ||' ORDER BY '|| fid;
+END;
+$$ LANGUAGE 'plpgsql';
+
+-------------------------------------------------------------------
+-- queen_weights('ogc_fid', 'wkb_geometry', 2, true, 0, 'queen_w', 'nat')
+-- DEPENDENCIES
+-- geoda_weights_getfids()
+-- geoda_weights_toset()
+-- geoda_weights_queen()
+-------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION queen_weights(
+    fid VARCHAR, geom VARCHAR, ordCont INTEGER, incLoOrd BOOLEAN, precThreshold FLOAT4, colName VARCHAR, tableName VARCHAR
+) RETURNS
+    TABLE (w bytea)
+AS $$
+BEGIN
+    EXECUTE 'ALTER TABLE '|| tableName ||' ADD COLUMN IF NOT EXISTS '|| colName ||' bytea;';
+    EXECUTE '
+        WITH tmp_w AS (
+            SELECT
+                geoda_weights_queen('|| fid ||', '|| geom ||', '|| ordCont ||', '|| incLoOrd || ', '|| precThreshold ||') AS w
+            FROM '|| tableName ||'
+        )
+        UPDATE '|| tableName ||' ta SET '|| colName ||' = tb.w
+        FROM (
+                 SELECT
+                     geoda_weights_getfids(w) AS fid,
+                     geoda_weights_toset(w) AS w
+                 FROM tmp_w
+             ) AS tb
+        WHERE ta.'||fid||' = tb.fid';
+    RETURN QUERY EXECUTE
+        'SELECT '|| geom ||' w FROM ' || tableName ||' ORDER BY '|| fid;
 END;
 $$ LANGUAGE 'plpgsql';
 
 --------------------------------------
 -- geoda_weights_queen(ogc_fid, wkb_geometry)
+-- geoda_weights_queen(ogc_fid, wkb_geometry, 2, TRUE, 0.0)
 -- AGGREGATE
 -- DEPENDENCIES
 -- bytea_to_geom_transfn()
 -- geom_to_queenweights_finalfn()
--- geoda_weights_queen()
 --------------------------------------
 CREATE OR REPLACE FUNCTION bytea_to_geom_transfn(
     internal,
@@ -57,8 +92,11 @@ CREATE OR REPLACE FUNCTION bytea_to_geom_transfn(
 AS 'MODULE_PATHNAME', 'bytea_to_geom_transfn'
     LANGUAGE c PARALLEL SAFE;
 
-CREATE OR REPLACE FUNCTION
-    bytea_to_geom_transfn(internal, integer, bytea)
+CREATE OR REPLACE FUNCTION bytea_to_geom_transfn(
+    internal,
+    integer,
+    bytea
+)
     RETURNS internal
 AS 'MODULE_PATHNAME', 'bytea_to_geom_transfn'
     LANGUAGE c PARALLEL SAFE;
@@ -118,29 +156,6 @@ CREATE OR REPLACE FUNCTION geoda_weights_astext(bytea)
 AS 'MODULE_PATHNAME', 'weights_to_text'
     LANGUAGE c PARALLEL SAFE
     COST 100;
-
---------------------------------------
--- geoda_weights_knn(ogc_fid, wkb_geometry, k=4)
--- AGGREGATE function
---------------------------------------
-CREATE OR REPLACE FUNCTION
-    bytea_knn_geom_transfn(internal, integer, bytea, integer)
-    RETURNS internal
-AS 'MODULE_PATHNAME', 'bytea_knn_geom_transfn'
-    LANGUAGE c PARALLEL SAFE;
-
-CREATE OR REPLACE FUNCTION
-    geom_knn_weights_bin_finalfn(internal)
-    RETURNS bytea
-AS 'MODULE_PATHNAME', 'geom_knn_weights_bin_finalfn'
-    LANGUAGE c PARALLEL SAFE;
-
-CREATE AGGREGATE geoda_weights_knn(integer, bytea, integer) (
-    sfunc = bytea_knn_geom_transfn,
-    stype = internal,
-    finalfunc = geom_knn_weights_bin_finalfn
-    );
-
 
 --------------------------------------
 -- DEPRECATED: geoda_weights_at()

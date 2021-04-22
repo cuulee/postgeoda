@@ -4,6 +4,7 @@ set(INSTALL_FILE ${PROJECT_NAME}--${PROJECT_VERSION_MOD}.sql)
 # The rest of the source files defining mostly functions
 set(SOURCE_FILES
         weights.sql
+        weights_knn.sql
         sa.sql
         )
 

@@ -4,6 +4,7 @@
 -- Changes:
 -- 2021-1-27 add geoda_localjoincount_b()
 -- 2021-1-29 add bivariate geoda_blocaljoincount_b(), multivariate geoda_mlocaljoincount_b()
+-- 2021-4-10 add geoda_quantilelisa
 --------------------------------------
 
 --------------------------------------
@@ -15,9 +16,9 @@ AS 'MODULE_PATHNAME', 'local_moran_window_bytea'
     LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
 
 --------------------------------------
--- geoda_localmoran(crm_prs, bytea)
+-- local_moran(crm_prs, bytea)
 --------------------------------------
-CREATE OR REPLACE FUNCTION geoda_localmoran(anyelement, bytea)
+CREATE OR REPLACE FUNCTION local_moran(anyelement, bytea)
     RETURNS point
 AS 'MODULE_PATHNAME', 'local_moran_window'
     LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
@@ -73,4 +74,12 @@ AS 'MODULE_PATHNAME', 'local_g_window_bytea'
 CREATE OR REPLACE FUNCTION geoda_localgstar_b(integer, anyelement, bytea)
     RETURNS point
 AS 'MODULE_PATHNAME', 'local_gstar_window_bytea'
+    LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
+
+--------------------------------------
+-- geoda_quantilelisa(5, 1, crm_prs, bytea)
+--------------------------------------
+CREATE OR REPLACE FUNCTION geoda_quantilelisa(integer, integer, anyelement, bytea)
+    RETURNS point
+AS 'MODULE_PATHNAME', 'quantilelisa_window'
     LANGUAGE 'c' IMMUTABLE STRICT WINDOW;

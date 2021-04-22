@@ -56,7 +56,8 @@ size_t BinElement::getSize() {
 }
 
 
-BinWeight::BinWeight(const uint8_t* bw) {
+BinWeight::BinWeight(const uint8_t* bw)
+{
 
     const uint8_t *pos = bw; // start position
 
@@ -122,9 +123,15 @@ BinWeight::BinWeight(const uint8_t* bw) {
     this->GetNbrStats();
 }
 
+/**
+ * Used
+ *
+ * @param N
+ * @param bw
+ * @param w_size
+ */
 BinWeight::BinWeight(int N, const uint8_t** bw, const size_t* w_size)
 {
-
     for (size_t i=0; i<N; ++i)  {
         BinElement *gl= new BinElement;
 
