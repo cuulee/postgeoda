@@ -123,7 +123,7 @@ get_pg_config(PG_CFLAGS --cflags)
 get_pg_config(PG_LDFLAGS --ldflags)
 get_pg_config(PG_LIBS --libs)
 
-set(PG_CFLAGS "-Wno-implicit-function-declaration ${PG_CFLAGS}")
+#set(PG_CFLAGS "-Wno-implicit-function-declaration ${PG_CFLAGS}")
 
 find_path(PG_SOURCE_DIR
         src/include/pg_config.h.in

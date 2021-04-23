@@ -240,6 +240,62 @@ static inline uint8_t *weights_to_bytes(PGWeight *w, size_t *size_out) {
     return w_out;
 }
 
+static inline bytea **weights_to_bytea_array(PGWeight *w) {
+    lwdebug(1,"Enter weights_to_bytea_array.");
+
+    int32_t num_obs = w->num_obs;
+
+    size_t *buf_size_array = lwalloc(sizeof(size_t) * num_obs);
+    bytea **results = lwalloc(sizeof(bytea*) * num_obs);
+
+    for (size_t i = 0; i < num_obs; ++i) {
+        size_t buf_size = 0;
+        uint16_t num_nbrs = w->neighbors[i].num_nbrs;
+        buf_size += sizeof(uint16_t); // num_nbrs
+        buf_size = buf_size + sizeof(uint32_t) * num_nbrs;
+        if (w->w_type == 'w') {
+            buf_size = buf_size + sizeof(float) * num_nbrs;
+        }
+        buf_size_array[i] = buf_size;
+    }
+
+    for (size_t i = 0; i < num_obs; ++i) {
+        size_t buf_size = buf_size_array[i];
+        uint8_t *buf = lwalloc(buf_size);
+        uint8_t *pos = buf; // retain the start pos
+        memcpy(buf, (uint8_t *) (&w->neighbors[i].idx), sizeof(uint32_t)); // copy idx
+        buf += sizeof(uint32_t);
+
+        uint16_t num_nbrs = w->neighbors[i].num_nbrs;
+
+        memcpy(buf, (uint8_t *) (&num_nbrs), sizeof(uint16_t)); // copy n_nbrs
+        buf += sizeof(uint16_t);
+
+        for (size_t j = 0; j < num_nbrs; ++j) { // copy nbr_id
+            memcpy(buf, (uint8_t *) (&w->neighbors[i].nbrId[j]), sizeof(uint32_t));
+            buf += sizeof(uint32_t);
+        }
+
+        if (w->w_type == 'w') {
+            for (size_t j = 0; j < num_nbrs; ++j) { // copy nbr_weight
+                memcpy(buf, (uint8_t *) (&w->neighbors[i].nbrWeight[j]), sizeof(float));
+                buf += sizeof(float);
+            }
+        }
+        // copy to bytea type
+        bytea *result = palloc(buf_size + VARHDRSZ);
+        memcpy(VARDATA(result), pos, buf_size);
+        SET_VARSIZE(result, buf_size+VARHDRSZ);
+        results[i] =  result;
+
+        // clean
+        lwfree(pos);
+    }
+
+    lwfree(buf_size_array);
+    lwdebug(1,"Exit weights_to_bytea_array.");
+    return results;
+}
 #ifdef __cplusplus
 }
 #endif

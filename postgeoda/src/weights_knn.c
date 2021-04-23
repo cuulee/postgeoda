@@ -37,9 +37,110 @@ typedef struct KnnCollectionState
     List *geoms;  /* collected geometries */
     List *ogc_fids;
     int k;
+    double power;
+    bool is_arc;
+    bool is_mile;
     Oid geomOid;
 } KnnCollectionState;
 
+typedef struct {
+    bool	isdone;
+    bool	isnull;
+    bytea **result;
+    /* variable length */
+} knn_context;
+
+/**
+ * Window function for SQL `knn_weights()`
+ *
+ * @param fcinfo
+ * @return
+ */
+Datum pg_knn_weights_window(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(pg_knn_weights_window);
+Datum pg_knn_weights_window(PG_FUNCTION_ARGS) {
+    lwdebug(1, "Enter pg_knn_weights. done.");
+
+    WindowObject winobj = PG_WINDOW_OBJECT();
+    knn_context *context;
+    int64 curpos, rowcount;
+
+
+    rowcount = WinGetPartitionRowCount(winobj);
+    context = (knn_context *)WinGetPartitionLocalMemory(winobj, sizeof(KnnCollectionState) + sizeof(int) * rowcount);
+
+    if (!context->isdone) {
+        bool isnull, isout;
+
+        /* We also need a non-zero N */
+        int N = (int) WinGetPartitionRowCount(winobj);
+        if (N <= 0) {
+            context->isdone = true;
+            context->isnull = true;
+            PG_RETURN_NULL();
+        }
+
+        // read data
+        List *geoms;
+        List *ogc_fids;
+
+        for (size_t i = 0; i < N; i++) {
+            // fid
+            Datum arg = WinGetFuncArgInPartition(winobj, 0, i, WINDOW_SEEK_HEAD, false, &isnull, &isout);
+            int64 fid = DatumGetInt64(arg);
+            //lwdebug(1, "local_g_window_bytea: %d-th:%d", i, fids[i]);
+
+            // the_geom
+            Datum arg1 = WinGetFuncArgInPartition(winobj, 1, i, WINDOW_SEEK_HEAD, false, &isnull, &isout);
+            bytea *bytea_wkb = DatumGetByteaP(arg1);
+            uint8_t *wkb = (uint8_t *) VARDATA(bytea_wkb);
+            LWGEOM *lwgeom = lwgeom_from_wkb(wkb, VARSIZE_ANY_EXHDR(bytea_wkb), LW_PARSER_CHECK_ALL);
+            LWGEOM* geom = lwgeom_clone_deep(lwgeom);
+            lwgeom_free(lwgeom);
+
+            if (i==0) {
+                geoms = list_make1(geom);
+                ogc_fids = list_make1_int(fid);
+            } else {
+                lappend(geoms, geom);
+                lappend_int(ogc_fids, fid);
+            }
+        }
+
+        // read k
+        Datum arg_k = WinGetFuncArgCurrent(winobj, 2, &isnull);
+        int64 k = DatumGetInt64(arg_k);
+
+        // create weights
+        PGWeight* w = create_knn_weights(ogc_fids, geoms, k);
+        bytea **result = weights_to_bytea_array(w);
+
+        // Safe the result
+        context->result = result;
+        context->isdone = true;
+
+        // free PGWeight
+        free_pgweight(w);
+
+        lwdebug(1, "Exit pg_knn_weights. done.");
+    }
+
+    if (context->isnull) {
+        PG_RETURN_NULL();
+    }
+
+    curpos = WinGetCurrentPosition(winobj);
+    PG_RETURN_BYTEA_P(context->result[curpos]);
+}
+
+/**
+ * bytea_knn_geom_transfn
+ *
+ * sfunc for aggregate SQL function `geoda_knn_weights()`
+ *
+ * @param fcinfo
+ * @return
+ */
 Datum bytea_knn_geom_transfn(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(bytea_knn_geom_transfn);
 
@@ -49,10 +150,11 @@ Datum bytea_knn_geom_transfn(PG_FUNCTION_ARGS)
 
     // Get the actual type OID of a specific function argument (counting from 0)
     Datum argType = get_fn_expr_argtype(fcinfo->flinfo, 1);
-    if (argType == InvalidOid)
+    if (argType == InvalidOid) {
         ereport(ERROR,
                 (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
                         errmsg("could not determine input data type")));
+    }
 
     MemoryContext aggcontext;
     if (!AggCheckCallContext(fcinfo, &aggcontext)) {
@@ -63,10 +165,13 @@ Datum bytea_knn_geom_transfn(PG_FUNCTION_ARGS)
     KnnCollectionState* state;
     if ( PG_ARGISNULL(0) ) {
         // first incoming row/item
-        state = (KnnCollectionState*)MemoryContextAlloc(aggcontext,
-                sizeof(KnnCollectionState));
+        state = (KnnCollectionState*)MemoryContextAlloc(aggcontext, sizeof(KnnCollectionState));
         state->geoms = NULL;
         state->ogc_fids = NULL;
+        state->k = 4;
+        state->power = 1.0;
+        state->is_arc = false;
+        state->is_mile = false;
         state->geomOid = argType;
         //MemoryContextSwitchTo(old);
     } else {
@@ -76,24 +181,47 @@ Datum bytea_knn_geom_transfn(PG_FUNCTION_ARGS)
     LWGEOM* geom;
     int idx;
 
+    /* Take a copy of the geometry into the aggregate context */
     MemoryContext old = MemoryContextSwitchTo(aggcontext);
 
-    if (!PG_ARGISNULL(1)) {
-        idx = PG_GETARG_INT64(1);
-    }
+    int arg_index = 1;
 
-    if (!PG_ARGISNULL(2)) {
-        bytea *bytea_wkb = PG_GETARG_BYTEA_P(2);
+    // fid
+    if (!PG_ARGISNULL(arg_index)) {
+        idx = PG_GETARG_INT64(arg_index);
+    }
+    arg_index += 1;
+
+    // the_geom
+    if (!PG_ARGISNULL(arg_index)) {
+        bytea *bytea_wkb = PG_GETARG_BYTEA_P(arg_index);
         uint8_t *wkb = (uint8_t *) VARDATA(bytea_wkb);
         LWGEOM *lwgeom = lwgeom_from_wkb(wkb, VARSIZE_ANY_EXHDR(bytea_wkb), LW_PARSER_CHECK_ALL);
         geom = lwgeom_clone_deep(lwgeom);
         lwgeom_free(lwgeom);
         //PG_FREE_IF_COPY(bytea_wkb, 0);
     }
+    arg_index += 1;
 
+    // k
     int k= 4;
-    if (!PG_ARGISNULL(3)) k = PG_GETARG_INT64(3);
+    if (!PG_ARGISNULL(arg_index)) {
+        k = PG_GETARG_INT64(arg_index);
+    }
     state->k = k;
+    arg_index += 1;
+
+    // is_arc
+    if (!PG_ARGISNULL(arg_index)) {
+        state->is_arc = PG_GETARG_BOOL(arg_index);
+    }
+    arg_index += 1;
+
+    // is_mile
+    if (!PG_ARGISNULL(arg_index)) {
+        state->is_mile = PG_GETARG_BOOL(arg_index);
+    }
+    arg_index += 1;
 
     /* Initialize or append to list as necessary */
     if (state->geoms) {

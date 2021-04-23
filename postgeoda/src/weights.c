@@ -255,8 +255,9 @@ Datum weights_to_text(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(weights_to_text);
 Datum weights_to_text(PG_FUNCTION_ARGS)
 {
-    if (PG_ARGISNULL(0))
+    if (PG_ARGISNULL(0)) {
         PG_RETURN_NULL();   /* returns null iff no input values */
+    }
 
     bytea *bytea_w = PG_GETARG_BYTEA_P(0);
     uint8_t *bw = (uint8_t *) VARDATA(bytea_w);
@@ -266,8 +267,6 @@ Datum weights_to_text(PG_FUNCTION_ARGS)
     uint16_t n_nbrs;
 
     uint8_t *pos = bw;
-
-
 
     // idx
     memcpy(&fid, pos, sizeof(uint32_t));

@@ -149,7 +149,7 @@ Datum local_moran_window(PG_FUNCTION_ARGS) {
         }
 
         lwdebug(1, "Enter local_moran_window. N=%d", N);
-        Point **result = pg_local_moran_warray(N, r, w, w_size);
+        Point **result = pg_local_moran_warray(N, r, (const uint8_t**)w, w_size);
 
         // Safe the result
         context->result = result;

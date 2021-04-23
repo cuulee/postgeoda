@@ -5,6 +5,11 @@
 -- 2021-4-21 Expose queen_weights() as the major interface for queen weights creation
 --------------------------------------
 
+CREATE OR REPLACE FUNCTION knn_weights(anyelement, bytea, integer)
+    RETURNS bytea
+AS 'MODULE_PATHNAME', 'pg_knn_weights_window'
+    LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
+
 -------------------------------------------------------------------
 -- knn_weights('ogc_fid', 'wkb_geometry', 4, 'knn4', 'nat')
 -- DEPENDENCIES
@@ -12,7 +17,7 @@
 -- geoda_weights_toset()
 -- geoda_weights_knn()
 -------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION knn_weights(
+CREATE OR REPLACE FUNCTION knn_weights1(
     fid VARCHAR, geom VARCHAR, k INTEGER, colName VARCHAR, tableName VARCHAR
 ) RETURNS
     TABLE (w bytea)
@@ -47,18 +52,33 @@ $$ LANGUAGE 'plpgsql';
 -- finalfunc: geom_knn_weights_bin_finalfn()
 --------------------------------------
 CREATE OR REPLACE FUNCTION
-    bytea_knn_geom_transfn(internal, integer, bytea, integer)
-    RETURNS internal
-AS 'MODULE_PATHNAME', 'bytea_knn_geom_transfn'
-    LANGUAGE c PARALLEL SAFE;
-
-CREATE OR REPLACE FUNCTION
     geom_knn_weights_bin_finalfn(internal)
     RETURNS bytea
 AS 'MODULE_PATHNAME', 'geom_knn_weights_bin_finalfn'
     LANGUAGE c PARALLEL SAFE;
 
+CREATE OR REPLACE FUNCTION
+    bytea_knn_geom_transfn(internal, integer, bytea, integer)
+    RETURNS internal
+AS 'MODULE_PATHNAME', 'bytea_knn_geom_transfn'
+    LANGUAGE c PARALLEL SAFE;
+
 CREATE AGGREGATE geoda_weights_knn(integer, bytea, integer) (
+    sfunc = bytea_knn_geom_transfn,
+    stype = internal,
+    finalfunc = geom_knn_weights_bin_finalfn
+    );
+
+--------------------------------------
+-- geoda_weights_knn(ogc_fid, wkb_geometry, 4, 1, FALSE, FALSE)
+--------------------------------------
+CREATE OR REPLACE FUNCTION
+    bytea_knn_geom_transfn(internal, integer, bytea, integer, integer, boolean, boolean)
+    RETURNS internal
+AS 'MODULE_PATHNAME', 'bytea_knn_geom_transfn'
+    LANGUAGE c PARALLEL SAFE;
+
+CREATE AGGREGATE geoda_weights_knn(integer, bytea, integer, integer, boolean, boolean) (
     sfunc = bytea_knn_geom_transfn,
     stype = internal,
     finalfunc = geom_knn_weights_bin_finalfn

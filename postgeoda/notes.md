@@ -170,12 +170,13 @@ SELECT geoda_weights_astext((geoda_weights_toset(w)) FROM nat_queen;
 * Local Moran using binary weights (window function)
 
 ```SQL
-SELECT queen_weights('ogc_id', 'wkb_geometry', 'queen_w', 'nat');
+SELECT queen_weights('ogc_fid', 'wkb_geometry', 'queen_w', 'nat');
 SELECT local_moran(hr60, queen_w) OVER(ORDER BY ogc_fid) FROM nat;
 ```
 
 ```SQL
-SELECT knn_weights('ogc_id', 'wkb_geometry', 4, 'knn4', 'nat');
+SELECT knn_weights('ogc_fid', 'wkb_geometry', 4, 'knn4', 'nat');
+SELECT local_g(hr60, knn4) OVER(ORDER BY ogc_fid) FROM nat;
 ```
 
 ## Logs
@@ -202,6 +203,82 @@ add azp_greedy
 add maxp_sa
 add maxp_tabu
 add maxp_greedy
+
+## Weights SQL functions
+
+The weights creation SQL functions staring with `geoda_` are Aggregate functions. Other weights creation SQL functions are Window functions. 
+
+The aggregate weights function can return the weights as a whole in the format of BYTEA, while
+the window weights function can store the weights in a BYTEA column for each observation separately. 
+
+### Aggregate weights functions
+
+Each aggregate weights creation function depends on two internal functions that are defined as 
+(1) sfunc and (2) finalfunc. The `sfunc` is used to collect or aggregate all geometries, then
+the `finalfunc` is used to process the geometries and create a spatial weights.
+
+For example:
+
+```SQL
+CREATE AGGREGATE geoda_weights_cont(fid integer, geom bytea, is_queen boolean)(
+    sfunc = bytea_to_geom_transfn,
+    stype = internal,
+    finalfunc = geom_to_contweights_finalfn
+    );
+```
+
+dependes on sfunc:
+```SQL
+CREATE OR REPLACE FUNCTION bytea_to_geom_transfn(
+    internal, integer, bytea, boolean
+)
+    RETURNS internal
+AS 'MODULE_PATHNAME', 'bytea_to_geom_transfn'
+    LANGUAGE c PARALLEL SAFE;
+```
+
+and `finalfunc`:
+```SQL
+CREATE OR REPLACE FUNCTION
+    geom_to_contweights_finalfn(internal)
+    RETURNS bytea
+AS 'MODULE_PATHNAME', 'geom_to_contweights_finalfn'
+    LANGUAGE c PARALLEL SAFE;
+```
+
+The `sfunc` stores the interim data, e.g. all geometries, in a data structure using 
+`MemoryContext` e.g.
+
+```c
+typedef struct CollectionBuildState
+{
+    List *geoms;  /* collected geometries */
+    List *ogc_fids;
+    bool is_queen;
+    int order;
+    bool inc_lower;
+    double precision_threshold;
+    Oid geomOid;
+} CollectionBuildState;
+```
+
+This `MemoryContext` is an aggregate context, and it will be shared with the `finalfunc`. 
+
+
+### Window weights function
+
+The window weights function is deisgned to create spatial weights for each observation
+separately. 
+
+```SQL
+CREATE OR REPLACE FUNCTION queen_weights(integer, bytea)
+	RETURNS bytea 
+AS 'MODULE_PATHNAME', 'pg_queen_weights_window'
+```
+
+The C function `pg_queen_weights_window` will (1) collect the geometries in the window via
+OVER() clause, (2) create a spatial weights as a whole, (3) return the spatial weights
+for each observation
 
 ## LISA SQL functions
 

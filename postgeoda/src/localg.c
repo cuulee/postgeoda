@@ -40,8 +40,7 @@ Datum local_g_window_bytea(PG_FUNCTION_ARGS) {
     int64 curpos, rowcount;
 
     rowcount = WinGetPartitionRowCount(winobj);
-    context = (lisa_context *)WinGetPartitionLocalMemory(winobj,
-                                                         sizeof(lisa_context) + sizeof(int) * rowcount);
+    context = (lisa_context *)WinGetPartitionLocalMemory(winobj,sizeof(lisa_context) + sizeof(int) * rowcount);
 
     if (!context->isdone) {
         bool isnull, isout;
@@ -98,8 +97,9 @@ Datum local_g_window_bytea(PG_FUNCTION_ARGS) {
         lwdebug(1, "Exit local_joincount_window_bytea. free_lisa() done.");
     }
 
-    if (context->isnull)
+    if (context->isnull) {
         PG_RETURN_NULL();
+    }
 
     curpos = WinGetCurrentPosition(winobj);
     PG_RETURN_POINT_P(context->result[curpos]);
