@@ -424,3 +424,10 @@ PGWeight *PostGeoDa::CreateContWeights(bool is_queen, int order, bool inc_lower,
     lwdebug(1, "Exit CreateQueenWeights");
     return pg_w;
 }
+
+double PostGeoDa::GetMinDistThreshold(bool is_arc, bool is_mile) {
+    lwdebug(1, "Enter PostGeoDa::GetMinDistThreshold().");
+    double d = gda_min_distthreshold(this, is_arc, is_mile);
+    lwdebug(1, "Exit PostGeoDa::GetMinDistThreshold().");
+    return d;
+}

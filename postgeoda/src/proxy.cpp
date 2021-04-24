@@ -102,6 +102,16 @@ PostGeoDa* build_pg_geoda(List *lfids, List *lwgeoms) {
     return geoda;
 }
 
+double get_min_distthreshold(List *lfids, List *lwgeoms, bool is_arc, bool is_mile)
+{
+    lwdebug(1,"Enter get_min_distthreshold.");
+    PostGeoDa* geoda = build_pg_geoda(lfids, lwgeoms);
+    double d = geoda->GetMinDistThreshold(is_arc, is_mile);
+    delete geoda;
+    lwdebug(1,"Exit get_min_distthreshold.");
+    return d;
+}
+
 PGWeight* create_cont_weights(List *lfids, List *lwgeoms, bool is_queen, int order, bool inc_lower, double precision_threshold)
 {
     lwdebug(1,"Enter create_queen_weights.");

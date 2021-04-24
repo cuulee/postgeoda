@@ -58,11 +58,11 @@ Datum pg_distance_weights_window(PG_FUNCTION_ARGS) {
     //lwdebug(1, "Enter pg_knn_weights.");
 
     WindowObject winobj = PG_WINDOW_OBJECT();
-    knn_context *context;
+    distance_context *context;
     int64 curpos, rowcount;
 
     rowcount = WinGetPartitionRowCount(winobj);
-    context = (knn_context *)WinGetPartitionLocalMemory(winobj, sizeof(KnnCollectionState) + sizeof(int) * rowcount);
+    context = (distance_context *)WinGetPartitionLocalMemory(winobj, sizeof(distance_context) + sizeof(int) * rowcount);
 
     if (!context->isdone) {
         bool isnull, isout;
@@ -152,6 +152,137 @@ Datum pg_distance_weights_window(PG_FUNCTION_ARGS) {
     curpos = WinGetCurrentPosition(winobj);
     PG_RETURN_BYTEA_P(context->result[curpos]);
 }
+
+typedef struct
+{
+    List *geoms;  /* collected geometries */
+    List *fids;
+    bool is_arc;
+    bool is_mile;
+    Oid geomOid;
+} WeightsCollectionState;
+
+/**
+ * bytea_to_geom_dist_transfn()
+ *
+ * This is for the aggregate function that collects all geometries and calculate the
+ * minimum pairwise distance.
+ *
+ * @param fcinfo
+ * @return
+ */
+Datum bytea_to_geom_dist_transfn(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(bytea_to_geom_dist_transfn);
+Datum bytea_to_geom_dist_transfn(PG_FUNCTION_ARGS)
+{
+    lwdebug(4, "Enter bytea_to_geom_dist_transfn().");
+
+    // Get the actual type OID of a specific function argument (counting from 0)
+    Datum argType = get_fn_expr_argtype(fcinfo->flinfo, 1);
+    if (argType == InvalidOid) {
+        ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+                        errmsg("could not determine input data type")));
+    }
+
+    MemoryContext aggcontext;
+    if (!AggCheckCallContext(fcinfo, &aggcontext)) {
+        elog(ERROR, "bytea_to_geom_dist_transfn called in non-aggregate context");
+        aggcontext = NULL;  /* keep compiler quiet */
+    }
+
+    WeightsCollectionState* state;
+    if ( PG_ARGISNULL(0) ) {
+        // first incoming row/item
+        state = (WeightsCollectionState*)MemoryContextAlloc(aggcontext, sizeof(WeightsCollectionState));
+        state->geoms = NULL;
+        state->fids = NULL;
+        state->is_mile = false;
+        state->is_arc = false;
+        state->geomOid = argType;
+        //MemoryContextSwitchTo(old);
+    } else {
+        state = (WeightsCollectionState*) PG_GETARG_POINTER(0);
+    }
+
+    LWGEOM* geom;
+    int idx;
+
+    // Take a copy of the geometry into the aggregate context
+    MemoryContext old = MemoryContextSwitchTo(aggcontext);
+
+    int arg_index = 1;
+
+    // fid
+    if (!PG_ARGISNULL(arg_index)) {
+        idx = PG_GETARG_INT64(arg_index);
+        arg_index += 1;
+    }
+
+    // the_geom
+    if (!PG_ARGISNULL(arg_index)) {
+        bytea *bytea_wkb = (bytea*)PG_DETOAST_DATUM_COPY(PG_GETARG_DATUM(arg_index));
+        uint8_t *wkb = (uint8_t *) VARDATA(bytea_wkb);
+        geom = lwgeom_from_wkb(wkb, VARSIZE_ANY_EXHDR(bytea_wkb), LW_PARSER_CHECK_ALL);
+        //PG_FREE_IF_COPY(bytea_wkb, 0);
+        arg_index += 1;
+    }
+
+    // is_arc
+    if (!PG_ARGISNULL(arg_index)) {
+        state->is_arc = PG_GETARG_BOOL(arg_index);
+        arg_index += 1;
+    }
+
+    // is_mile
+    if (!PG_ARGISNULL(arg_index)) {
+        state->is_mile = PG_GETARG_BOOL(arg_index);
+        arg_index += 1;
+    }
+
+    // Initialize or append to list as necessary
+    if (state->geoms) {
+        lwdebug(4, "lappend geom.");
+        state->geoms = lappend(state->geoms, geom); // pg_list
+        state->fids = lappend_int(state->fids, idx);
+    } else {
+        lwdebug(4, "list_make.");
+        state->geoms = list_make1(geom);
+        state->fids = list_make1_int(idx);
+    }
+
+    MemoryContextSwitchTo(old);
+
+    PG_RETURN_POINTER(state);
+}
+/**
+ * geom_to_dist_threshold_finalfn()
+ *
+ * This is the finalfunc for min_distthreshold() SQL function.
+ *
+ * @param fcinfo
+ * @return
+ */
+Datum geom_to_dist_threshold_finalfn(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(geom_to_dist_threshold_finalfn);
+Datum geom_to_dist_threshold_finalfn(PG_FUNCTION_ARGS)
+{
+    WeightsCollectionState *p;
+
+    lwdebug(1,"Enter geom_to_dist_threshold_finalfn.");
+
+    if (PG_ARGISNULL(0)) {
+        PG_RETURN_NULL();   /* returns null iff no input values */
+    }
+
+    // get State from aggregate internal function
+    p = (WeightsCollectionState*) PG_GETARG_POINTER(0);
+
+    double dist = get_min_distthreshold(p->fids, p->geoms, p->is_arc, p->is_mile);
+
+    lwdebug(1,"Exit geom_to_dist_threshold_finalfn.");
+    PG_RETURN_FLOAT4(dist);
+}
+
 
 #ifdef __cplusplus
 }

@@ -5,6 +5,7 @@ set(INSTALL_FILE ${PROJECT_NAME}--${PROJECT_VERSION_MOD}.sql)
 set(SOURCE_FILES
         weights.sql
         weights_knn.sql
+        weights_dist.sql
         sa.sql
         )
 

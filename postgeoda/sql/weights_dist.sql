@@ -8,16 +8,36 @@
 --------------------------------------
 -- MAIN INTERFACE min_distthreshold(wkb_geometry)
 --------------------------------------
-CREATE OR REPLACE FUNCTION
-    geom_to_mindistthreshold_finalfn(internal)
-    RETURNS FLOAT4
-AS 'MODULE_PATHNAME', 'geom_to_mindistthreshold_finalfn'
+CREATE OR REPLACE FUNCTION bytea_to_geom_dist_transfn(
+    internal, integer, bytea
+)
+    RETURNS internal
+AS 'MODULE_PATHNAME', 'bytea_to_geom_dist_transfn'
     LANGUAGE c PARALLEL SAFE;
 
-CREATE OR REPLACE AGGREGATE min_distthreshold(bytea)
-    sfunc = bytea_to_geom_transfn,
+CREATE OR REPLACE FUNCTION bytea_to_geom_dist_transfn(
+    internal, integer, bytea, boolean, boolean
+)
+    RETURNS internal
+AS 'MODULE_PATHNAME', 'bytea_to_geom_dist_transfn'
+    LANGUAGE c PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION
+    geom_to_dist_threshold_finalfn(internal)
+    RETURNS FLOAT4
+AS 'MODULE_PATHNAME', 'geom_to_dist_threshold_finalfn'
+    LANGUAGE c PARALLEL SAFE;
+
+CREATE AGGREGATE min_distthreshold(integer, bytea) (
+    sfunc = bytea_to_geom_dist_transfn,
     stype = internal,
-    finalfunc = geom_to_contweights_finalfn
+    finalfunc = geom_to_dist_threshold_finalfn
+    );
+
+CREATE AGGREGATE min_distthreshold(integer, bytea, boolean, boolean) (
+    sfunc = bytea_to_geom_dist_transfn,
+    stype = internal,
+    finalfunc = geom_to_dist_threshold_finalfn
     );
 
 --------------------------------------

@@ -38,6 +38,7 @@ set(SOURCES
         ../../libgeoda/knn/perf.cpp
         weights_cont.c
         weights_knn.c
+        weights_dist.c
         localmoran.c
         joincount.c
         localg.c

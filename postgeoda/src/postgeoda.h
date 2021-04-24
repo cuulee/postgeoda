@@ -49,6 +49,8 @@ public:
                                     std::string kernel = "", double bandwidth = 0, bool adaptive_bandwidth = false,
                                     bool use_kernel_diagonal = false);
 
+    double GetMinDistThreshold(bool is_arc, bool is_mile);
+
 protected:
     int map_type;
 

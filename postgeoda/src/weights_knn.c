@@ -222,8 +222,8 @@ Datum bytea_knn_geom_transfn(PG_FUNCTION_ARGS)
     // fid
     if (!PG_ARGISNULL(arg_index)) {
         idx = PG_GETARG_INT64(arg_index);
+        arg_index += 1;
     }
-    arg_index += 1;
 
     // the_geom
     if (!PG_ARGISNULL(arg_index)) {
@@ -233,28 +233,28 @@ Datum bytea_knn_geom_transfn(PG_FUNCTION_ARGS)
         geom = lwgeom_clone_deep(lwgeom);
         lwgeom_free(lwgeom);
         //PG_FREE_IF_COPY(bytea_wkb, 0);
+        arg_index += 1;
     }
-    arg_index += 1;
 
     // k
     int k= 4;
     if (!PG_ARGISNULL(arg_index)) {
         k = PG_GETARG_INT64(arg_index);
+        state->k = k;
+        arg_index += 1;
     }
-    state->k = k;
-    arg_index += 1;
 
     // is_arc
     if (!PG_ARGISNULL(arg_index)) {
         state->is_arc = PG_GETARG_BOOL(arg_index);
+        arg_index += 1;
     }
-    arg_index += 1;
 
     // is_mile
     if (!PG_ARGISNULL(arg_index)) {
         state->is_mile = PG_GETARG_BOOL(arg_index);
+        arg_index += 1;
     }
-    arg_index += 1;
 
     /* Initialize or append to list as necessary */
     if (state->geoms) {

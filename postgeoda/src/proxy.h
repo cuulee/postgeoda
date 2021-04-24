@@ -150,6 +150,19 @@ PGWeight* create_distance_weights(List *fids, List *geoms, double threshold,
                                   bool is_arc, bool is_mile);
 
 /**
+ * get_min_distthreshold()
+ *
+ * This function computes the minimum pairwise distance among the observations.
+ *
+ * @param lfids
+ * @param lwgeoms
+ * @param is_arc
+ * @param is_mile
+ * @return
+ */
+double get_min_distthreshold(List *lfids, List *lwgeoms, bool is_arc, bool is_mile);
+
+/**
  * Structure to exchange lisa data between PG and libgeoda
  */
 typedef struct PGLISA
