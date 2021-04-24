@@ -4,7 +4,40 @@
 -- Changes:
 -- 2021-1-27 Reorganize Weights SQLs
 -- 2021-4-10 Expose queen_weights() as the major interface for queen weights creation
+-- 2021-4-23 Add Window SQL functions for queen_weights and rook_weights
 --------------------------------------
+
+--------------------------------------
+-- MAIN INTERFACE queen_weights(fid, wkb_geometry)
+--------------------------------------
+CREATE OR REPLACE FUNCTION queen_weights(integer, bytea)
+    RETURNS bytea
+AS 'MODULE_PATHNAME', 'pg_queen_weights_window'
+    LANGUAGE 'c' STRICT WINDOW;
+
+--------------------------------------
+-- MAIN INTERFACE queen_weights(fid, wkb_geometry, 2, TRUE, 0.0)
+--------------------------------------
+CREATE OR REPLACE FUNCTION queen_weights(integer, bytea, integer, boolean, float4)
+    RETURNS bytea
+AS 'MODULE_PATHNAME', 'pg_queen_weights_window'
+    LANGUAGE 'c' STRICT WINDOW;
+
+--------------------------------------
+-- MAIN INTERFACE rook_weights(fid, wkb_geometry)
+--------------------------------------
+CREATE OR REPLACE FUNCTION rook_weights(integer, bytea)
+    RETURNS bytea
+AS 'MODULE_PATHNAME', 'pg_rook_weights_window'
+    LANGUAGE 'c' STRICT WINDOW;
+
+--------------------------------------
+-- MAIN INTERFACE rook_weights(fid, wkb_geometry, 2, TRUE, 0.0)
+--------------------------------------
+CREATE OR REPLACE FUNCTION rook_weights(integer, bytea, integer, boolean, float4)
+    RETURNS bytea
+AS 'MODULE_PATHNAME', 'pg_rook_weights_window'
+    LANGUAGE 'c' STRICT WINDOW;
 
 -------------------------------------------------------------------
 -- queen_weights/rook_weights('ogc_fid', 'wkb_geometry', 'queen_w', 'nat')
@@ -227,10 +260,4 @@ CREATE OR REPLACE FUNCTION geoda_queenweights_set(bytea)
 AS 'MODULE_PATHNAME', 'PGWeight_to_set'
     LANGUAGE C STRICT PARALLEL SAFE;
 
---------------------------------------
--- DEPRECATED geoda_queenweights(wkb_geometry)
---------------------------------------
-CREATE OR REPLACE FUNCTION geoda_queenweights(integer, bytea, int)
-    RETURNS bytea
-AS 'MODULE_PATHNAME', 'weights_queen_window'
-    LANGUAGE 'c' STRICT WINDOW;
+

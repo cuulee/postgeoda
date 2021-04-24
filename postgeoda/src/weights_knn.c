@@ -43,6 +43,13 @@ typedef struct KnnCollectionState
     Oid geomOid;
 } KnnCollectionState;
 
+/**
+ * contiguity_context
+ *
+ * The structure used in function `pg_knn_weights_window` to construct
+ * returning results of KNN spatial weights.
+ *
+ */
 typedef struct {
     bool	isdone;
     bool	isnull;
@@ -52,6 +59,7 @@ typedef struct {
 
 /**
  * Window function for SQL `knn_weights()`
+ * This will be the main interface for knn weights.
  *
  * @param fcinfo
  * @return
@@ -59,12 +67,12 @@ typedef struct {
 Datum pg_knn_weights_window(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(pg_knn_weights_window);
 Datum pg_knn_weights_window(PG_FUNCTION_ARGS) {
-    lwdebug(1, "Enter pg_knn_weights. done.");
+    //this function will be called multiple times until context->isdone==true
+    //lwdebug(1, "Enter pg_knn_weights.");
 
     WindowObject winobj = PG_WINDOW_OBJECT();
     knn_context *context;
     int64 curpos, rowcount;
-
 
     rowcount = WinGetPartitionRowCount(winobj);
     context = (knn_context *)WinGetPartitionLocalMemory(winobj, sizeof(KnnCollectionState) + sizeof(int) * rowcount);
@@ -82,7 +90,7 @@ Datum pg_knn_weights_window(PG_FUNCTION_ARGS) {
 
         // read data
         List *geoms;
-        List *ogc_fids;
+        List *fids;
 
         for (size_t i = 0; i < N; i++) {
             // fid
@@ -92,27 +100,52 @@ Datum pg_knn_weights_window(PG_FUNCTION_ARGS) {
 
             // the_geom
             Datum arg1 = WinGetFuncArgInPartition(winobj, 1, i, WINDOW_SEEK_HEAD, false, &isnull, &isout);
-            bytea *bytea_wkb = DatumGetByteaP(arg1);
+            bytea *bytea_wkb = (bytea*)PG_DETOAST_DATUM_COPY(arg1);
             uint8_t *wkb = (uint8_t *) VARDATA(bytea_wkb);
             LWGEOM *lwgeom = lwgeom_from_wkb(wkb, VARSIZE_ANY_EXHDR(bytea_wkb), LW_PARSER_CHECK_ALL);
-            LWGEOM* geom = lwgeom_clone_deep(lwgeom);
-            lwgeom_free(lwgeom);
-
             if (i==0) {
-                geoms = list_make1(geom);
-                ogc_fids = list_make1_int(fid);
+                geoms = list_make1(lwgeom);
+                fids = list_make1_int(fid);
             } else {
-                lappend(geoms, geom);
-                lappend_int(ogc_fids, fid);
+                lappend(geoms, lwgeom);
+                lappend_int(fids, fid);
             }
         }
 
-        // read k
-        Datum arg_k = WinGetFuncArgCurrent(winobj, 2, &isnull);
-        int64 k = DatumGetInt64(arg_k);
+        // read arguments
+        int k = 4;
+        if (PG_ARGISNULL(2)) {
+            k = DatumGetInt32(WinGetFuncArgCurrent(winobj, 2, &isnull));
+            if (isnull || k <= 0) {
+                k = 4;
+            }
+        }
+
+        double power = 1.0;
+        if (PG_ARGISNULL(3)) {
+            power = DatumGetFloat4(WinGetFuncArgCurrent(winobj, 3, &isnull));
+            if (isnull || power < 0) {
+                power = 1.0;
+            }
+        }
+
+        bool is_inverse = false;
+        if (PG_ARGISNULL(4)) {
+            is_inverse = DatumGetBool(WinGetFuncArgCurrent(winobj, 4, &isnull));
+        }
+
+        bool is_arc = false;
+        if (PG_ARGISNULL(5)) {
+            is_arc = DatumGetBool(WinGetFuncArgCurrent(winobj, 5, &isnull));
+        }
+
+        bool is_mile = false;
+        if (PG_ARGISNULL(6)) {
+            is_mile = DatumGetBool(WinGetFuncArgCurrent(winobj, 6, &isnull));
+        }
 
         // create weights
-        PGWeight* w = create_knn_weights(ogc_fids, geoms, k);
+        PGWeight* w = create_knn_weights(fids, geoms, k, power, is_inverse, is_arc, is_mile);
         bytea **result = weights_to_bytea_array(w);
 
         // Safe the result
@@ -253,7 +286,7 @@ Datum geom_knn_weights_bin_finalfn(PG_FUNCTION_ARGS)
 
     p = (KnnCollectionState*) PG_GETARG_POINTER(0);
 
-    PGWeight* w = create_knn_weights(p->ogc_fids, p->geoms, p->k);
+    PGWeight* w = create_knn_weights(p->ogc_fids, p->geoms, p->k, 1.0, false, false, false);
 
     size_t buf_size = 0;
     uint8_t* w_bytes = weights_to_bytes(w, &buf_size);

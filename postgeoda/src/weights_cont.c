@@ -3,6 +3,7 @@
  *
  * Changes:
  * 2021-1-27 Update to use libgeoda 0.0.6
+ * 2021-4-23 Add contiguity_context, pg_queen_weights_window()
  */
 
 #include <postgres.h>
@@ -21,7 +22,6 @@ extern "C" {
 #endif
 
 
-#include <libgeoda/pg/config.h>
 #include <libgeoda/pg/geoms.h>
 #include "proxy.h"
 #include "weights.h"
@@ -29,6 +29,323 @@ extern "C" {
 #ifdef PG_MODULE_MAGIC
 PG_MODULE_MAGIC;
 #endif
+
+
+/**
+ * contiguity_context
+ *
+ * The structure used in function `pg_queen_weights_window` to construct
+ * returning results of contiguity spatial weights.
+ *
+ */
+typedef struct {
+    bool	isdone;
+    bool	isnull;
+    bytea   **result;
+    /* variable length */
+} contiguity_context;
+
+/**
+ * Window function for SQL `queen_weights()`
+ * This will be the main interface for Queen weights
+ *
+ * @param fcinfo
+ * @return
+ */
+Datum pg_queen_weights_window(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(pg_queen_weights_window);
+Datum pg_queen_weights_window(PG_FUNCTION_ARGS) {
+    //this function will be called multiple times until context->isdone==true
+
+    WindowObject winobj = PG_WINDOW_OBJECT();
+    contiguity_context *context;
+    int64 curpos, rowcount;
+
+    rowcount = WinGetPartitionRowCount(winobj);
+    context = (contiguity_context *) WinGetPartitionLocalMemory(winobj, sizeof(contiguity_context) + sizeof(int) * rowcount);
+
+    if (!context->isdone) {
+        bool isnull, isout;
+
+        /* We also need a non-zero N */
+        int N = (int) WinGetPartitionRowCount(winobj);
+        lwdebug(1,"Enter pg_queen_weights_window: N=%d", N);
+        if (N <= 0) {
+            context->isdone = true;
+            context->isnull = true;
+            PG_RETURN_NULL();
+        }
+
+        // Read all the geometries from the partition window into a list
+        List *geoms;
+        List *fids;
+
+        for (size_t i = 0; i < N; i++) {
+            // fid
+            Datum arg = WinGetFuncArgInPartition(winobj, 0, i, WINDOW_SEEK_HEAD, false, &isnull, &isout);
+            int64 fid = DatumGetInt64(arg);
+
+            // the_geom
+            Datum arg1 = WinGetFuncArgInPartition(winobj, 1, i, WINDOW_SEEK_HEAD, false, &isnull, &isout);
+            bytea *bytea_wkb = (bytea*)PG_DETOAST_DATUM_COPY(arg1);
+            uint8_t *wkb = (uint8_t*)VARDATA(bytea_wkb);
+            LWGEOM *lwgeom = lwgeom_from_wkb(wkb, VARSIZE_ANY_EXHDR(bytea_wkb), LW_PARSER_CHECK_ALL);
+            if (i==0) {
+                geoms = list_make1(lwgeom);
+                fids = list_make1_int(fid);
+            } else {
+                geoms = lappend(geoms, lwgeom);
+                fids = lappend_int(fids, fid);
+            }
+        }
+
+        // bool is_queen, int order, bool inc_lower, double precision_threshold
+        int order = 1;
+        if (PG_ARGISNULL(2)) {
+            order = DatumGetInt32(WinGetFuncArgCurrent(winobj, 2, &isnull));
+            if (isnull || order <= 0) {
+                order = 1;
+            }
+        }
+
+        bool inc_lower = false;
+        if (PG_ARGISNULL(3)) {
+            inc_lower = DatumGetBool(WinGetFuncArgCurrent(winobj, 3, &isnull));
+        }
+
+        double precision_threshold = 0.0;
+        if (PG_ARGISNULL(4)) {
+            precision_threshold = DatumGetFloat4(WinGetFuncArgCurrent(winobj, 4, &isnull));
+            if (isnull || precision_threshold < 0) {
+                precision_threshold = 0.0;
+            }
+        }
+
+        // create weights
+        PGWeight* w = create_cont_weights(fids, geoms, true, order, inc_lower, precision_threshold);
+        bytea **result = weights_to_bytea_array(w);
+
+        // Safe the result
+        context->result = result;
+        context->isdone = true;
+
+        // free PGWeight
+        free_pgweight(w);
+
+        lwdebug(1, "Exit pg_queen_weights_window. done.");
+    }
+
+    if (context->isnull) {
+        PG_RETURN_NULL();
+    }
+
+    curpos = WinGetCurrentPosition(winobj);
+    PG_RETURN_BYTEA_P(context->result[curpos]);
+}
+
+/**
+ * Window function for SQL `rook_weights()`
+ * This will be the main interface for Rook weights
+ *
+ * @param fcinfo
+ * @return
+ */
+Datum pg_rook_weights_window(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(pg_rook_weights_window);
+Datum pg_rook_weights_window(PG_FUNCTION_ARGS) {
+    //this function will be called multiple times until context->isdone==true
+
+    WindowObject winobj = PG_WINDOW_OBJECT();
+    contiguity_context *context;
+    int64 curpos, rowcount;
+
+    rowcount = WinGetPartitionRowCount(winobj);
+    context = (contiguity_context *) WinGetPartitionLocalMemory(winobj, sizeof(contiguity_context) + sizeof(int) * rowcount);
+
+    if (!context->isdone) {
+        bool isnull, isout;
+
+        /* We also need a non-zero N */
+        int N = (int) WinGetPartitionRowCount(winobj);
+        lwdebug(1,"Enter pg_rook_weights_window: N=%d", N);
+        if (N <= 0) {
+            context->isdone = true;
+            context->isnull = true;
+            PG_RETURN_NULL();
+        }
+
+        // Read all the geometries from the partition window into a list
+        List *geoms;
+        List *fids;
+
+        for (size_t i = 0; i < N; i++) {
+            // fid
+            Datum arg = WinGetFuncArgInPartition(winobj, 0, i, WINDOW_SEEK_HEAD, false, &isnull, &isout);
+            int64 fid = DatumGetInt64(arg);
+
+            // the_geom
+            Datum arg1 = WinGetFuncArgInPartition(winobj, 1, i, WINDOW_SEEK_HEAD, false, &isnull, &isout);
+            bytea *bytea_wkb = (bytea*)PG_DETOAST_DATUM_COPY(arg1);
+            uint8_t *wkb = (uint8_t*)VARDATA(bytea_wkb);
+            LWGEOM *lwgeom = lwgeom_from_wkb(wkb, VARSIZE_ANY_EXHDR(bytea_wkb), LW_PARSER_CHECK_ALL);
+            if (i==0) {
+                geoms = list_make1(lwgeom);
+                fids = list_make1_int(fid);
+            } else {
+                geoms = lappend(geoms, lwgeom);
+                fids = lappend_int(fids, fid);
+            }
+        }
+
+        // bool is_queen, int order, bool inc_lower, double precision_threshold
+        int order = 1;
+        if (PG_ARGISNULL(2)) {
+            order = DatumGetInt32(WinGetFuncArgCurrent(winobj, 2, &isnull));
+            if (isnull || order <= 0) {
+                order = 1;
+            }
+        }
+
+        bool inc_lower = false;
+        if (PG_ARGISNULL(3)) {
+            inc_lower = DatumGetBool(WinGetFuncArgCurrent(winobj, 3, &isnull));
+        }
+
+        double precision_threshold = 0.0;
+        if (PG_ARGISNULL(3)) {
+            precision_threshold = DatumGetFloat4(WinGetFuncArgCurrent(winobj, 4, &isnull));
+            if (isnull || precision_threshold < 0) {
+                precision_threshold = 0.0;
+            }
+        }
+
+        // create weights
+        PGWeight* w = create_cont_weights(fids, geoms, false, order, inc_lower, precision_threshold);
+        bytea **result = weights_to_bytea_array(w);
+
+        // Safe the result
+        context->result = result;
+        context->isdone = true;
+
+        // free PGWeight
+        free_pgweight(w);
+
+        lwdebug(1, "Exit pg_rook_weights_window. done.");
+    }
+
+    if (context->isnull) {
+        PG_RETURN_NULL();
+    }
+
+    curpos = WinGetCurrentPosition(winobj);
+    PG_RETURN_BYTEA_P(context->result[curpos]);
+}
+
+
+/**
+ * weights_to_text
+ *
+ * Used in SQL query: GEODA_WEIGHTS_ASTEXT(bytea)
+ *
+ * The input is a bytea, which represents weights information for
+ * one observation in one row
+ *
+ * BINARY format:
+ * uint32 (4 bytes): index of i-th observation
+ * uint16 (2 bytes): number of neighbors of i-th observation (nn)
+ * uint32 (4 bytes x nn): neighbor id
+ * float (4 bytes x nn): weights value of each neighbor
+ *
+ * @param fcinfo
+ * @return
+ */
+Datum weights_to_text(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(weights_to_text);
+Datum weights_to_text(PG_FUNCTION_ARGS)
+{
+    if (PG_ARGISNULL(0)) {
+        PG_RETURN_NULL();   /* returns null iff no input values */
+    }
+
+    bytea *bytea_w = PG_GETARG_BYTEA_P(0);
+    uint8_t *bw = (uint8_t *) VARDATA(bytea_w);
+    size_t bw_size = VARSIZE_ANY_EXHDR(bytea_w);
+
+    uint32_t fid;
+    uint16_t n_nbrs;
+
+    uint8_t *pos = bw;
+
+    // idx
+    memcpy(&fid, pos, sizeof(uint32_t));
+    pos += sizeof(uint32_t);
+
+    lwdebug(4,"Enter weights_to_text(). fid=%d", fid);
+
+    // number of neighbors
+    memcpy(&n_nbrs, pos, sizeof(uint16_t));
+    pos += sizeof(uint16_t);
+
+    char *c_nbrs = lwalloc(BUFSIZE * n_nbrs * sizeof(char));
+    snprintf(c_nbrs, BUFSIZE, "%d:", fid);
+
+    // check if has weight val (wval)
+    bool has_wval = bw_size > (size_t)(pos + sizeof(uint32_t) * n_nbrs - bw);
+
+    if (has_wval) {
+        strcat(c_nbrs, "[");
+    }
+    strcat(c_nbrs, "[");
+
+    // read neighbor id
+    uint32_t n_id;
+    for (size_t j=0; j<n_nbrs; ++j)  {
+        char buffer[BUFSIZE];
+        memcpy(&n_id, pos, sizeof(uint32_t));
+        pos += sizeof(uint32_t);
+
+        snprintf(buffer, BUFSIZE, "%d", n_id);
+        strcat(c_nbrs, buffer);
+        if (j < n_nbrs-1)
+            strcat(c_nbrs, ",");
+    }
+
+    strcat(c_nbrs, "]");
+
+    // read neighbor weights
+    if (has_wval) {
+        strcat(c_nbrs, ",[");
+        float weight;
+        char buffer[BUFSIZE];
+        for (size_t j=0; j<n_nbrs; ++j)  {
+            memcpy(&weight, pos, sizeof(float));
+            pos += sizeof(float);
+
+            snprintf(buffer, BUFSIZE, "%f", weight);
+            strcat(c_nbrs, buffer);
+            if (j < n_nbrs - 1)
+                strcat(c_nbrs, ",");
+        }
+        strcat(c_nbrs, "]]");
+    }
+
+    // prepare result
+    text *result;
+    size_t len = strlen(c_nbrs);
+
+    size_t res_len = len + VARHDRSZ;
+    result = (text*)palloc(res_len);
+    SET_VARSIZE(result, res_len);
+    memcpy(VARDATA(result), c_nbrs, len);
+
+    lwfree(c_nbrs);
+
+    lwdebug(4,"Exit weights_to_text(). fid=%d", fid);
+
+    PG_RETURN_TEXT_P(result);
+}
+
+// Following lines of code are for AGGREGATE SQL functions
 
 typedef struct WeightsAccessState
 {
@@ -235,119 +552,14 @@ Datum weights_bytea_getfids(PG_FUNCTION_ARGS)
 }
 
 /**
- * weights_to_text
- *
- * Used in SQL query: GEODA_WEIGHTS_ASTEXT(bytea)
- *
- * The input is a bytea, which only contains neighbor information for
- * ONLY one observation
- *
- * BINARY format:
- * uint32 (4 bytes): index of i-th observation
- * uint16 (2 bytes): number of neighbors of i-th observation (nn)
- * uint32 (4 bytes x nn): neighbor id
- * float (4 bytes x nn): weights value of each neighbor
- *
- * @param fcinfo
- * @return
- */
-Datum weights_to_text(PG_FUNCTION_ARGS);
-PG_FUNCTION_INFO_V1(weights_to_text);
-Datum weights_to_text(PG_FUNCTION_ARGS)
-{
-    if (PG_ARGISNULL(0)) {
-        PG_RETURN_NULL();   /* returns null iff no input values */
-    }
-
-    bytea *bytea_w = PG_GETARG_BYTEA_P(0);
-    uint8_t *bw = (uint8_t *) VARDATA(bytea_w);
-    size_t bw_size = VARSIZE_ANY_EXHDR(bytea_w);
-
-    uint32_t fid;
-    uint16_t n_nbrs;
-
-    uint8_t *pos = bw;
-
-    // idx
-    memcpy(&fid, pos, sizeof(uint32_t));
-    pos += sizeof(uint32_t);
-
-    lwdebug(4,"Enter weights_to_text(). fid=%d", fid);
-
-    // number of neighbors
-    memcpy(&n_nbrs, pos, sizeof(uint16_t));
-    pos += sizeof(uint16_t);
-
-    char *c_nbrs = lwalloc(BUFSIZE * n_nbrs * sizeof(char));
-    snprintf(c_nbrs, BUFSIZE, "%d:", fid);
-
-    // check if has weight val (wval)
-    bool has_wval = bw_size > (size_t)(pos + sizeof(uint32_t) * n_nbrs - bw);
-
-    if (has_wval) {
-        strcat(c_nbrs, "[");
-    }
-    strcat(c_nbrs, "[");
-
-    // read neighbor id
-    uint32_t n_id;
-    for (size_t j=0; j<n_nbrs; ++j)  {
-        char buffer[BUFSIZE];
-        memcpy(&n_id, pos, sizeof(uint32_t));
-        pos += sizeof(uint32_t);
-
-        snprintf(buffer, BUFSIZE, "%d", n_id);
-        strcat(c_nbrs, buffer);
-        if (j < n_nbrs-1)
-            strcat(c_nbrs, ",");
-    }
-
-    strcat(c_nbrs, "]");
-
-    // read neighbor weights
-    if (has_wval) {
-        strcat(c_nbrs, ",[");
-        float weight;
-        char buffer[BUFSIZE];
-        for (size_t j=0; j<n_nbrs; ++j)  {
-            memcpy(&weight, pos, sizeof(float));
-            pos += sizeof(float);
-
-            snprintf(buffer, BUFSIZE, "%f", weight);
-            strcat(c_nbrs, buffer);
-            if (j < n_nbrs - 1)
-                strcat(c_nbrs, ",");
-        }
-        strcat(c_nbrs, "]]");
-    }
-
-    // prepare result
-    text *result;
-    size_t len = strlen(c_nbrs);
-
-    size_t res_len = len + VARHDRSZ;
-    result = (text*)palloc(res_len);
-    SET_VARSIZE(result, res_len);
-    memcpy(VARDATA(result), c_nbrs, len);
-
-    lwfree(c_nbrs);
-
-    lwdebug(4,"Exit weights_to_text(). fid=%d", fid);
-
-    PG_RETURN_TEXT_P(result);
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////
-// weights
-
-/**
- * Internal function
  * bytea_to_geom_transfn
  *
- * Used in aggregate sql GEODA_WEIGHTS_QUEEN, GEODA_WEIGHTS_KNN
+ * This is an Internal `sfunc` function, which is used to collect all geometries
+ * and fids from SELECT query. The collected information will be shared using
+ * MemoryContext.
  *
  * @param fcinfo
- * @return
+ * @return Pointer to CollectionBuildState
  */
 Datum bytea_to_geom_transfn(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(bytea_to_geom_transfn);
@@ -640,156 +852,6 @@ Datum geom_to_contweights_finalfn(PG_FUNCTION_ARGS)
 
     lwdebug(1,"Exit geom_to_contweights_finalfn.");
     PG_RETURN_BYTEA_P(result);
-}
-
-
-/**
- * DEPRECATED
- *
- * Window SQL function
- *
- * @param fcinfo
- * @return
- */
-Datum weights_queen_window(PG_FUNCTION_ARGS);
-
-typedef struct {
-    bool	isdone;
-    bool	isnull;
-    List	*result;
-    /* variable length */
-} weights_context;
-
-PG_FUNCTION_INFO_V1(weights_queen_window);
-Datum weights_queen_window(PG_FUNCTION_ARGS) {
-    WindowObject winobj = PG_WINDOW_OBJECT();
-    weights_context *context;
-    int64 curpos, rowcount;
-
-    rowcount = WinGetPartitionRowCount(winobj);
-    context = (weights_context *) WinGetPartitionLocalMemory(winobj,
-            sizeof(weights_context) + sizeof(int) * rowcount);
-
-    if (!context->isdone) {
-        bool isnull, isout;
-
-        /* We also need a non-zero N */
-        int N = (int) WinGetPartitionRowCount(winobj);
-        lwdebug(1,"Enter weights_queen_window: not done. N=%d", N);
-        if (N <= 0) {
-            context->isdone = true;
-            context->isnull = true;
-            PG_RETURN_NULL();
-        }
-
-        /* What is order? If it's NULL or invalid, we can't procede */
-        int k = DatumGetInt32(WinGetFuncArgCurrent(winobj, 2, &isnull));
-        if (isnull || k <= 0) k = 1;
-
-        List *geoms, *fids;
-        /* Read all the geometries from the partition window into a list */
-        for (size_t i = 0; i < N; i++) {
-            Datum arg0 = WinGetFuncArgInPartition(winobj, 0, i,
-                                                 WINDOW_SEEK_HEAD, false, &isnull, &isout);
-            int64 fid = DatumGetInt64(arg0);
-
-            Datum arg1 = WinGetFuncArgInPartition(winobj, 1, i,
-                                                 WINDOW_SEEK_HEAD, false, &isnull, &isout);
-            bytea *bytea_wkb = (bytea*)PG_DETOAST_DATUM_COPY(arg1);
-            uint8_t *wkb = (uint8_t*)VARDATA(bytea_wkb);
-            LWGEOM *lwgeom = lwgeom_from_wkb(wkb, VARSIZE_ANY_EXHDR(bytea_wkb), LW_PARSER_CHECK_ALL);
-            if (i==0) {
-                geoms = list_make1(lwgeom);
-                fids = list_make1_int(fid);
-            } else {
-                geoms = lappend(geoms, lwgeom);
-                fids = lappend_int(fids, fid);
-            }
-        }
-
-        lwdebug(1,"Enter weights_queen_window:create_queen_weights.");
-
-        // create weights
-        PGWeight* w = 0;//create_queen_weights(fids, geoms);
-
-        List *r;
-        //bytea** r = palloc(N*sizeof(bytea*));
-
-        for (size_t i=0; i< N; ++i) {
-            uint32_t fid = w->neighbors[i].idx;
-            uint16_t nn = w->neighbors[i].num_nbrs;
-
-            size_t buf_size = sizeof(uint32_t); // idx
-            buf_size = buf_size + sizeof(uint16_t); // number of neighbors
-            buf_size = buf_size + sizeof(uint32_t) * nn;
-            if (w->w_type == 'w') {
-                buf_size = buf_size + sizeof(float) * nn;
-            }
-
-            uint8_t *buf= lwalloc(buf_size);
-            uint8_t *out = buf;
-
-            memcpy(buf, (uint8_t*)(&fid), sizeof(uint32_t));  // copy idx
-            buf += sizeof(uint32_t);
-
-            memcpy(buf, (uint8_t*)(&nn), sizeof(uint16_t)); // copy number of neighbors
-            buf += sizeof(uint16_t);
-
-            if (nn> 0)
-            lwdebug(1,"Enter weights_queen_window:create_queen_weights. %d-%d has %d neighbors: %d",
-                    i, fid, nn, w->neighbors[i].nbrId[0]);
-            else
-            lwdebug(1,"Enter weights_queen_window:create_queen_weights. %d-%d has %d neighbors.",
-                    i, fid, nn);
-
-            for (size_t j=0; j<nn; ++j)  {
-                memcpy(buf, (uint8_t*)(&w->neighbors[i].nbrId[j]), sizeof(uint32_t));
-                buf += sizeof(uint32_t);
-            }
-
-            if (w->w_type == 'w') {
-                for (size_t j = 0; j < nn; ++j) {
-                    memcpy(buf, (uint8_t *) (&w->neighbors[i].nbrWeight[j]), sizeof(float));
-                    buf += sizeof(float);
-                }
-            }
-
-            /* The buffer pointer should now land at the end of the allocated buffer space. Let's check. */
-            if ( buf_size != (size_t) (buf - out) )
-            {
-                lwdebug(4,"Output is not the same size as the allocated buffer. %d=%d.", buf_size, buf-out);
-                lwerror("Output is not the same size as the allocated buffer. %d=%d", buf_size, buf-out);
-                lwfree(out);
-                PG_RETURN_NULL();
-            }
-
-            bytea *result = palloc(buf_size + VARHDRSZ);
-            memcpy(VARDATA(result), out, buf_size);
-            SET_VARSIZE(result, buf_size+VARHDRSZ);
-
-            if (i==0)
-                r = list_make1(result);
-            else
-                r =  lappend(r, result);
-
-            lwfree(out);
-        }
-
-        /* Safe the result */
-        context->result = r;
-        context->isdone = true;
-
-        free_pgweight(w);
-    }
-
-    if (context->isnull)
-        PG_RETURN_NULL();
-
-    curpos = WinGetCurrentPosition(winobj);
-
-    bytea* bytea_w = (bytea*)list_nth(context->result, curpos);
-
-    PG_RETURN_BYTEA_P(bytea_w);
 }
 
 /**

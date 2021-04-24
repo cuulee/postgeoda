@@ -165,6 +165,39 @@ SELECT geoda_weights_tojson(w) FROM nat_queen;
 SELECT geoda_weights_astext((geoda_weights_toset(w)) FROM nat_queen;
 ```
 
+### 3. Distance-based Spatial Weights
+
+PostGIS provides some functions that can be utilized to create distance-based weights.
+
+First, create a spatial index to get a better performance:
+
+```SQL
+CREATE INDEX sdoh_geom_idx
+  ON sdoh
+  USING GIST (geom);
+```
+
+Second, get the minimum pairwise distance among the geometries:
+```SQL
+SELECT 
+	ST_Distance(t1.geom, t2.geom) 
+FROM sdoh t2, sdoh t1 
+WHERE t2.gid <> t1.gid ORDER BY ST_Distance(t1.geom, t2.geom) LIMIT 1
+```
+
+NOTE: the above SQL is very slow on large dataset. It took minutes to run. The problem is
+`ST_Distance(t1.geom, t2.geom)` in WHERE clause will compute the actual distance for all 
+pairs, which is not necessary at all in this task. 
+
+PostGeoDa provides the SQL function `min_distthreshold()` to fulfil the same task. Instead
+of compute the actual distance for all pairs, this function will use the spatial index to
+find the nearest neighbor for each observation, then compute the distance and pick the smallest
+distance:
+
+```SQL
+SELECT min_distthreshold(geom) FROM sdoh
+```
+
 ### 3. LISA
 
 * Local Moran using binary weights (window function)
@@ -175,8 +208,28 @@ SELECT local_moran(hr60, queen_w) OVER(ORDER BY ogc_fid) FROM nat;
 ```
 
 ```SQL
-SELECT knn_weights('ogc_fid', 'wkb_geometry', 4, 'knn4', 'nat');
-SELECT local_g(hr60, knn4) OVER(ORDER BY ogc_fid) FROM nat;
+SELECT ogc_fid, knn_weights(ogc_fid, wkb_geometry, 4) OVER() FROM nat;
+```
+
+```SQL
+--create a knn weights and save it to column "knn4"
+ALTER TABLE nat ADD COLUMN IF NOT EXISTS knn4 bytea;
+UPDATE nat SET knn4 = w.knn_weights
+FROM (SELECT ogc_fid, knn_weights(ogc_fid, wkb_geometry, 4) OVER() FROM nat) as w
+WHERE nat.ogc_fid = w.ogc_fid
+```
+
+```SQL
+SELECT local_g(hr60, knn4) OVER() FROM nat;
+```
+
+```SQL
+--do weights creation + LISA in single query
+SELECT 
+	local_moran(hr60, knn_weights) OVER()
+FROM 
+	(SELECT hr60, knn_weights(ogc_fid, wkb_geometry, 4) OVER() FROM nat) 
+AS lisa
 ```
 
 ## Logs

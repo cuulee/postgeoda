@@ -40,7 +40,14 @@ public:
     PGWeight* create_pgweight(GeoDaWeight* gda_w);
 
     PGWeight* CreateContWeights(bool is_queen, int order, bool inc_lower, double precision_threshold);
-    PGWeight* CreateKnnWeights(int k=4);
+
+    PGWeight* CreateKnnWeights(int k, double power, bool is_inverse, bool is_arc, bool is_mile,
+                               std::string kernel = "", double bandwidth = 0,
+                               bool adaptive_bandwidth = false, bool use_kernel_diagonal = false);
+
+    PGWeight* CreateDistanceWeights(double dist_threshold, double power, bool is_inverse, bool is_arc, bool is_mile,
+                                    std::string kernel = "", double bandwidth = 0, bool adaptive_bandwidth = false,
+                                    bool use_kernel_diagonal = false);
 
 protected:
     int map_type;

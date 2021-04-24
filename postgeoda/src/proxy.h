@@ -17,6 +17,32 @@ extern "C" {
 #include <utils/geo_decls.h> /* for Point */
 
 // Structure to exchange weights data between PG and libgeoda
+
+/**
+* The binary format of spatial weights (PGWeight)
+*
+* char (1 bytes): weights type: 'a'->GAL 'w'->GWT
+* uint32 (4 bytes): number of observations: N
+* ...
+* uint32 (4 bytes): index of i-th observation
+* uint16 (2 bytes): number of neighbors of i-th observation (nn)
+* uint32 (4 bytes x nn): neighbor id
+* float (4 bytes x nn): weights value of each neighbor
+* ...
+*
+* total size of GAL weights = 1 + 4 + (2 + nn *(4+4)) * N
+* total size of GWT weights = 1 + 4 + (2 + nn * 4) * N
+*
+* e.g. 10 million observations, on average, each observation has nn neighbors:
+* if nn=20, gal weights, total size = 0.76GB
+* if nn=20, gwt weights, total size = 1.5GB
+*
+* e.g. 100 million observations, on average, each observation has nn neighbors:
+* if nn=20, gal weights, total size = 7.6GB
+* if nn=20, gwt weights, total size = 15.08GB
+*
+*/
+
 typedef struct PGNeighbor
 {
     uint32_t idx;
@@ -47,7 +73,8 @@ void free_pgweight(PGWeight *w);
  * @param precision_threshold
  * @return
  */
-PGWeight* create_cont_weights(List *fids, List *geoms, bool is_queen, int order, bool inc_lower, double precision_threshold);
+PGWeight* create_cont_weights(List *fids, List *geoms, bool is_queen, int order, bool inc_lower,
+                              double precision_threshold);
 
 /**
  * knn weights functions bridging PG and libgeoda::knn_weights
@@ -55,19 +82,72 @@ PGWeight* create_cont_weights(List *fids, List *geoms, bool is_queen, int order,
  * @param fids
  * @param geoms
  * @param k
+ * @param power
+ * @param is_inverse
+ * @param is_arc
+ * @param is_mile
  * @return
  */
-PGWeight* create_knn_weights(List *fids, List *geoms, int k);
+PGWeight* create_knn_weights(List *fids, List *geoms, int k, double power,
+                             bool is_inverse, bool is_arc, bool is_mile);
 
 /**
- * distance weights functions bridging PG and libgeoda::distance_weights
  *
  * @param fids
  * @param geoms
- * @param threshold
+ * @param k
+ * @param power
+ * @param is_inverse
+ * @param is_arc
+ * @param is_mile
+ * @param kernel
+ * @param bandwidth
+ * @param adaptive_bandwidth
+ * @param use_kernel_diagonal
  * @return
  */
-PGWeight* create_distance_weights(List *fids, List *geoms, double threshold);
+PGWeight* create_kernel_knn_weights(List *fids, List *geoms, int k, double power,
+                                    bool is_inverse, bool is_arc,
+                                    bool is_mile, const char* kernel,
+                                    double bandwidth, bool adaptive_bandwidth,
+                                    bool use_kernel_diagonal);
+
+/**
+ *
+ * @param fids
+ * @param geoms
+ * @param dist_threshold
+ * @param power
+ * @param is_inverse
+ * @param is_arc
+ * @param is_mile
+ * @param kernel
+ * @param bandwidth
+ * @param adaptive_bandwidth
+ * @param use_kernel_diagonal
+ * @return
+ */
+PGWeight* create_kernel_weights(List *fids, List *geoms, double dist_threshold,
+                                double power, bool is_inverse, bool is_arc,
+                                bool is_mile, const char* kernel,
+                                double bandwidth, bool adaptive_bandwidth,
+                                bool use_kernel_diagonal);
+ /**
+  *
+  * distance weights functions bridging PG and libgeoda::distance_weights
+  *
+  * @param fids
+  * @param geoms
+  * @param threshold
+  * @param power
+  * @param is_inverse
+  * @param is_arc
+  * @param is_mile
+  * @return
+  */
+PGWeight* create_distance_weights(List *fids, List *geoms, double threshold,
+                                  double power, bool is_inverse,
+                                  bool is_arc, bool is_mile);
 
 /**
  * Structure to exchange lisa data between PG and libgeoda

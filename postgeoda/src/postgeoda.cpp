@@ -3,6 +3,7 @@
  *
  * Changes:
  * 2021-1-27 Update to use libgeoda 0.0.6
+ * 2021-4-23 Add CreateKnnWeights(); CreateDistanceWeights();
  */
 
 #include <libgeoda/shape/centroid.h>
@@ -305,18 +306,29 @@ PGWeight *PostGeoDa::create_pgweight(GeoDaWeight* gda_w)
     return pg_w;
 }
 
-
-PGWeight *PostGeoDa::CreateKnnWeights(int k) {
+/**
+ * CreateKnnWeights()
+ *
+ * This function creates a K-NN spatial weights. It is also used to create
+ * a KNN based Kernel weights.
+ *
+ * @param k
+ * @param power
+ * @param is_inverse
+ * @param is_arc
+ * @param is_mile
+ * @param kernel
+ * @param bandwidth
+ * @param adaptive_bandwidth
+ * @param use_kernel_diagonal
+ * @return
+ */
+PGWeight *PostGeoDa::CreateKnnWeights(int k, double power, bool is_inverse, bool is_arc,
+                                      bool is_mile, std::string kernel,
+                                      double bandwidth, bool adaptive_bandwidth,
+                                      bool use_kernel_diagonal) {
     lwdebug(1, "Enter PostGeoDa::CreateKnnWeights(k=%d).", k);
 
-    double power = 1.0;
-    bool is_inverse = false;
-    bool is_arc = false;
-    bool is_mile = true;
-    std::string kernel = "";
-    double bandwidth = 0;
-    bool adaptive_bandwidth = false;
-    bool use_kernel_diagonal = false;
     std::string poly_id = "";
     GeoDaWeight* gda_w = gda_knn_weights(this, k, power, is_inverse, is_arc, is_mile,
                                          kernel, bandwidth, adaptive_bandwidth, use_kernel_diagonal, poly_id);
@@ -333,7 +345,54 @@ PGWeight *PostGeoDa::CreateKnnWeights(int k) {
     return pg_w;
 }
 
+/**
+ * CreateDistanceWeights()
+ *
+ * This function creates a Distance-based Spatial Weights. It is also used to create a distance-based Kernel weights.
+ *
+ * @param dist_threshold
+ * @param power
+ * @param is_inverse
+ * @param is_arc
+ * @param is_mile
+ * @param kernel
+ * @param bandwidth
+ * @param adaptive_bandwidth
+ * @param use_kernel_diagonal
+ * @return
+ */
+PGWeight *PostGeoDa::CreateDistanceWeights(double dist_threshold, double power, bool is_inverse, bool is_arc,
+                                           bool is_mile, std::string kernel,
+                                           double bandwidth, bool adaptive_bandwidth,
+                                           bool use_kernel_diagonal) {
+    lwdebug(1, "Enter PostGeoDa::CreateDistanceWeights(dist=%f).", dist_threshold);
 
+    std::string poly_id = "";
+    GeoDaWeight* gda_w = gda_distance_weights(this, dist_threshold, poly_id, power, is_inverse, is_arc, is_mile,
+                                              kernel, use_kernel_diagonal);
+
+    lwdebug(1, "Enter CreateDistanceWeights: min_nbrs=%d", gda_w->GetMinNbrs());
+    lwdebug(1, "Enter CreateDistanceWeights: sparsity=%f", gda_w->GetSparsity());
+    lwdebug(1, "GeoDaWeight: gda_w=%x", gda_w);
+
+    PGWeight* pg_w =  create_pgweight(gda_w);
+
+    delete gda_w;
+
+    lwdebug(1, "Enter PostGeoDa::CreateDistanceWeights().");
+    return pg_w;
+}
+
+/**
+ * CreateContWeights()
+ *
+ * This function creates a contiguity spatial weights (Queen or Rook).
+ * @param is_queen
+ * @param order
+ * @param inc_lower
+ * @param precision_threshold
+ * @return
+ */
 PGWeight *PostGeoDa::CreateContWeights(bool is_queen, int order, bool inc_lower, double precision_threshold) {
     lwdebug(1, "Enter PostGeoDa::CreateQueenWeights().");
     double shp_min_x = (double)this->main_map.bbox_x_min;

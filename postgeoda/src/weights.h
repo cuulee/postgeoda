@@ -3,6 +3,7 @@
  *
  * Changes:
  * 2021-1-27 Update to use libgeoda 0.0.6
+ * 2021-4-23 Add function weights_to_bytea_array() for weights Window SQL functions
  */
 
 #ifndef __PG_WEIGHTS_HEADER__
@@ -16,6 +17,14 @@ extern "C" {
 
 #define BUFSIZE 64
 
+/**
+ * weights_to_json
+ *
+ * This function converts the spatial weights in format of BYTEA to a PG text object.
+ *
+ * @param bw
+ * @return
+ */
 static inline text *weights_to_json(bytea *bw) {
     lwdebug(1,"Enter weights_to_json().");
     uint8_t *w = (uint8_t*)VARDATA(bw);
@@ -136,30 +145,16 @@ static inline text *weights_to_json(bytea *bw) {
 }
 
 /**
- * The binary format of spatial weights
+ *  weights_to_bytes
  *
- * char (1 bytes): weights type: 'a'->GAL 'w'->GWT
- * uint32 (4 bytes): number of observations: N
- * ...
- * uint32 (4 bytes): index of i-th observation
- * uint16 (2 bytes): number of neighbors of i-th observation (nn)
- * uint32 (4 bytes x nn): neighbor id
- * float (4 bytes x nn): weights value of each neighbor
- * ...
+ *  This function converts PGWeight object to a byte object (uint8_t). The size
+ *  of the byte object (size_out) should be written to the input parameter
+ *  (size_t *size_out)
  *
- * total size of GAL weights = 1 + 4 + (2 + nn *(4+4)) * N
- * total size of GWT weights = 1 + 4 + (2 + nn * 4) * N
- *
- * e.g. 10 million observations, on average, each observation has nn neighbors:
- * if nn=20, gal weights, total size = 0.76GB
- * if nn=20, gwt weights, total size = 1.5GB
- *
- * e.g. 100 million observations, on average, each observation has nn neighbors:
- * if nn=20, gal weights, total size = 7.6GB
- * if nn=20, gwt weights, total size = 15.08GB
- *
+ * @param w
+ * @param size_out
+ * @return uint8_t*
  */
-//uint8_t* weights_to_bytes(PGWeight *w, size_t *size_out);
 static inline uint8_t *weights_to_bytes(PGWeight *w, size_t *size_out) {
     lwdebug(1,"Enter weights_to_bytes.");
 
@@ -240,6 +235,15 @@ static inline uint8_t *weights_to_bytes(PGWeight *w, size_t *size_out) {
     return w_out;
 }
 
+/**
+ * weights_to_bytea_array
+ *
+ * This function converts PGWeight object to an array of bytea (**), which can be returned
+ * for a Window function e.g. pg_knn_weights_window
+ *
+ * @param w
+ * @return bytea**
+ */
 static inline bytea **weights_to_bytea_array(PGWeight *w) {
     lwdebug(1,"Enter weights_to_bytea_array.");
 
@@ -250,11 +254,12 @@ static inline bytea **weights_to_bytea_array(PGWeight *w) {
 
     for (size_t i = 0; i < num_obs; ++i) {
         size_t buf_size = 0;
+        buf_size += sizeof(uint32_t); // idx
         uint16_t num_nbrs = w->neighbors[i].num_nbrs;
         buf_size += sizeof(uint16_t); // num_nbrs
-        buf_size = buf_size + sizeof(uint32_t) * num_nbrs;
+        buf_size += sizeof(uint32_t) * num_nbrs;
         if (w->w_type == 'w') {
-            buf_size = buf_size + sizeof(float) * num_nbrs;
+            buf_size += sizeof(float) * num_nbrs;
         }
         buf_size_array[i] = buf_size;
     }
@@ -268,18 +273,21 @@ static inline bytea **weights_to_bytea_array(PGWeight *w) {
 
         uint16_t num_nbrs = w->neighbors[i].num_nbrs;
 
-        memcpy(buf, (uint8_t *) (&num_nbrs), sizeof(uint16_t)); // copy n_nbrs
+        memcpy(buf, &num_nbrs, sizeof(uint16_t)); // copy n_nbrs
         buf += sizeof(uint16_t);
 
         for (size_t j = 0; j < num_nbrs; ++j) { // copy nbr_id
-            memcpy(buf, (uint8_t *) (&w->neighbors[i].nbrId[j]), sizeof(uint32_t));
+            memcpy(buf, &w->neighbors[i].nbrId[j], sizeof(uint32_t));
             buf += sizeof(uint32_t);
         }
 
         if (w->w_type == 'w') {
             for (size_t j = 0; j < num_nbrs; ++j) { // copy nbr_weight
-                memcpy(buf, (uint8_t *) (&w->neighbors[i].nbrWeight[j]), sizeof(float));
+                memcpy(buf, &w->neighbors[i].nbrWeight[j], sizeof(float));
                 buf += sizeof(float);
+                //if (i==0) {
+                //    lwdebug(1, "weights_to_bytea_array: 1st neighbors: %f", w->neighbors[i].nbrWeight[j]);
+                //}
             }
         }
         // copy to bytea type
