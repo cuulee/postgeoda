@@ -103,28 +103,28 @@ Datum pg_queen_weights_window(PG_FUNCTION_ARGS) {
 
         // bool is_queen, int order, bool inc_lower, double precision_threshold
         int order = 1;
-        if (arg_index < PG_NARGS() && PG_ARGISNULL(arg_index)) {
+        if (arg_index < PG_NARGS() ) {
             order = DatumGetInt32(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
             if (isnull || order <= 0) {
                 order = 1;
             }
-            arg_index +=1;
         }
+        arg_index +=1;
 
         bool inc_lower = false;
-        if (arg_index < PG_NARGS() && PG_ARGISNULL(arg_index)) {
+        if (arg_index < PG_NARGS() ) {
             inc_lower = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
-            arg_index +=1;
         }
+        arg_index +=1;
 
         double precision_threshold = 0.0;
-        if (arg_index < PG_NARGS() && PG_ARGISNULL(arg_index)) {
+        if (arg_index < PG_NARGS()) {
             precision_threshold = DatumGetFloat4(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
             if (isnull || precision_threshold < 0) {
                 precision_threshold = 0.0;
             }
-            arg_index +=1;
         }
+        arg_index +=1;
 
         // create weights
         PGWeight* w = create_cont_weights(fids, geoms, true, order, inc_lower, precision_threshold);
@@ -206,28 +206,28 @@ Datum pg_rook_weights_window(PG_FUNCTION_ARGS) {
 
         // bool is_queen, int order, bool inc_lower, double precision_threshold
         int order = 1;
-        if (arg_index < PG_NARGS() && PG_ARGISNULL(arg_index)) {
+        if (arg_index < PG_NARGS()) {
             order = DatumGetInt32(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
             if (isnull || order <= 0) {
                 order = 1;
             }
-            arg_index += 1;
         }
+        arg_index += 1;
 
         bool inc_lower = false;
-        if (arg_index < PG_NARGS() && PG_ARGISNULL(arg_index)) {
+        if (arg_index < PG_NARGS()) {
             inc_lower = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
-            arg_index += 1;
         }
+        arg_index += 1;
 
         double precision_threshold = 0.0;
-        if (arg_index < PG_NARGS() && PG_ARGISNULL(arg_index)) {
+        if (arg_index < PG_NARGS()) {
             precision_threshold = DatumGetFloat4(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
             if (isnull || precision_threshold < 0) {
                 precision_threshold = 0.0;
             }
-            arg_index += 1;
         }
+        arg_index += 1;
 
         // create weights
         PGWeight* w = create_cont_weights(fids, geoms, false, order, inc_lower, precision_threshold);
@@ -255,7 +255,7 @@ Datum pg_rook_weights_window(PG_FUNCTION_ARGS) {
 /**
  * weights_to_text
  *
- * Used in SQL query: GEODA_WEIGHTS_ASTEXT(bytea)
+ * Used in NORAML SQL query: GEODA_WEIGHTS_ASTEXT(bytea)
  *
  * The input is a bytea, which represents weights information for
  * one observation in one row
@@ -619,8 +619,8 @@ Datum bytea_to_geom_transfn(PG_FUNCTION_ARGS)
     // fid
     if (!PG_ARGISNULL(arg_index)) {
         idx = PG_GETARG_INT64(arg_index);
-        arg_index += 1;
     }
+    arg_index += 1;
 
     // the_geom
     if (!PG_ARGISNULL(arg_index)) {
@@ -630,32 +630,32 @@ Datum bytea_to_geom_transfn(PG_FUNCTION_ARGS)
         geom = lwgeom_clone_deep(lwgeom);
         lwgeom_free(lwgeom);
         //PG_FREE_IF_COPY(bytea_wkb, 0);
-        arg_index += 1;
     }
+    arg_index += 1;
 
     // is_queen
     if (!PG_ARGISNULL(arg_index)) {
         state->inc_lower = PG_GETARG_BOOL(arg_index);
-        arg_index += 1;
     }
+    arg_index += 1;
 
     // order_of_contiguity
     if (!PG_ARGISNULL(arg_index)) {
         state->order = PG_GETARG_INT32(arg_index);
-        arg_index += 1;
     }
+    arg_index += 1;
 
     // include_lower_order
     if (!PG_ARGISNULL(arg_index)) {
         state->inc_lower = PG_GETARG_BOOL(arg_index);
-        arg_index += 1;
     }
+    arg_index += 1;
 
     // precision_threshold
     if (!PG_ARGISNULL(arg_index)) {
         state->precision_threshold = PG_GETARG_FLOAT4(arg_index);
-        arg_index += 1;
     }
+    arg_index += 1;
 
     /* Initialize or append to list as necessary */
     if (state->geoms) {

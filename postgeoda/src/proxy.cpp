@@ -159,13 +159,14 @@ PGWeight* create_distance_weights(List *lfids, List *lwgeoms, double threshold, 
     return w;
 }
 
-PGWeight* create_kernel_weights(List *lfids, List *lwgeoms, int k, double power,
+PGWeight* create_kernel_weights(List *lfids, List *lwgeoms, double bandwidth, double power,
                                 bool is_inverse, bool is_arc, bool is_mile, const char* kernel,
-                                double bandwidth, bool adaptive_bandwidth, bool use_kernel_diagonal)
+                                bool use_kernel_diagonal)
 {
     lwdebug(1,"Enter create_kernel_weights.");
     PostGeoDa* geoda = build_pg_geoda(lfids, lwgeoms);
-    PGWeight *w = geoda->CreateKnnWeights(k, power, is_inverse, is_arc, is_mile);
+    PGWeight *w = geoda->CreateDistanceWeights(bandwidth, power, is_inverse, is_arc, is_mile, kernel,
+                                               use_kernel_diagonal);
     delete geoda;
     lwdebug(1,"Exit create_kernel_weights.");
     return w;

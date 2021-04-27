@@ -33,16 +33,7 @@ PG_MODULE_MAGIC;
 #endif
 
 
-typedef struct KnnCollectionState
-{
-    List *geoms;  /* collected geometries */
-    List *ogc_fids;
-    int k;
-    double power;
-    bool is_arc;
-    bool is_mile;
-    Oid geomOid;
-} KnnCollectionState;
+
 
 /**
  * contiguity_context
@@ -76,7 +67,7 @@ Datum pg_knn_weights_window(PG_FUNCTION_ARGS) {
     int64 curpos, rowcount;
 
     rowcount = WinGetPartitionRowCount(winobj);
-    context = (knn_context *)WinGetPartitionLocalMemory(winobj, sizeof(KnnCollectionState) + sizeof(int) * rowcount);
+    context = (knn_context *)WinGetPartitionLocalMemory(winobj, sizeof(knn_context) + sizeof(int) * rowcount);
 
     if (!context->isdone) {
         bool isnull, isout;
@@ -113,37 +104,44 @@ Datum pg_knn_weights_window(PG_FUNCTION_ARGS) {
             }
         }
 
+        int arg_index = 2;
+
         // read arguments
         int k = 4;
-        if (PG_ARGISNULL(2)) {
-            k = DatumGetInt32(WinGetFuncArgCurrent(winobj, 2, &isnull));
+        if (arg_index < PG_NARGS()) {
+            k = DatumGetInt32(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
             if (isnull || k <= 0) {
                 k = 4;
             }
         }
+        arg_index += 1;
 
         double power = 1.0;
-        if (PG_ARGISNULL(3)) {
-            power = DatumGetFloat4(WinGetFuncArgCurrent(winobj, 3, &isnull));
+        if (arg_index < PG_NARGS()) {
+            power = DatumGetFloat4(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
             if (isnull || power < 0) {
                 power = 1.0;
             }
         }
+        arg_index += 1;
 
         bool is_inverse = false;
-        if (PG_ARGISNULL(4)) {
-            is_inverse = DatumGetBool(WinGetFuncArgCurrent(winobj, 4, &isnull));
+        if (arg_index < PG_NARGS()) {
+            is_inverse = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
         }
+        arg_index += 1;
 
         bool is_arc = false;
-        if (PG_ARGISNULL(5)) {
-            is_arc = DatumGetBool(WinGetFuncArgCurrent(winobj, 5, &isnull));
+        if (arg_index < PG_NARGS()) {
+            is_arc = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
         }
+        arg_index += 1;
 
         bool is_mile = false;
-        if (PG_ARGISNULL(6)) {
-            is_mile = DatumGetBool(WinGetFuncArgCurrent(winobj, 6, &isnull));
+        if (arg_index < PG_NARGS()) {
+            is_mile = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
         }
+        arg_index += 1;
 
         // create weights
         PGWeight* w = create_knn_weights(fids, geoms, k, power, is_inverse, is_arc, is_mile);
@@ -183,7 +181,7 @@ Datum pg_kernel_knn_weights_window(PG_FUNCTION_ARGS) {
     int64 curpos, rowcount;
 
     rowcount = WinGetPartitionRowCount(winobj);
-    context = (knn_context *)WinGetPartitionLocalMemory(winobj, sizeof(KnnCollectionState) + sizeof(int) * rowcount);
+    context = (knn_context *)WinGetPartitionLocalMemory(winobj, sizeof(knn_context) + sizeof(int) * rowcount);
 
     if (!context->isdone) {
         bool isnull, isout;
@@ -224,7 +222,7 @@ Datum pg_kernel_knn_weights_window(PG_FUNCTION_ARGS) {
 
         // read arguments
         int k = 4;
-        if (PG_ARGISNULL(arg_index)) {
+        if (arg_index < PG_NARGS()) {
             k = DatumGetInt32(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
             if (isnull || k <= 0) {
                 k = 4;
@@ -233,7 +231,7 @@ Datum pg_kernel_knn_weights_window(PG_FUNCTION_ARGS) {
         arg_index += 1;
 
         char *kernel = 0;
-        if (PG_ARGISNULL(arg_index)) {
+        if (arg_index < PG_NARGS()) {
             VarChar *arg = (VarChar *)DatumGetVarCharPP(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
             kernel = (char *)VARDATA(arg);
             lwdebug(1, "Get kernel: %s", kernel);
@@ -246,49 +244,49 @@ Datum pg_kernel_knn_weights_window(PG_FUNCTION_ARGS) {
         arg_index += 1;
 
         double power = 1.0;
-        if (arg_index < PG_NARGS() && PG_ARGISNULL(arg_index)) {
+        if (arg_index < PG_NARGS() ) {
             lwdebug(1, "Get power");
             power = DatumGetFloat4(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
             if (isnull || power < 0) {
                 power = 1.0;
             }
-            arg_index += 1;
         }
+        arg_index += 1;
 
         bool is_inverse = false;
-        if (arg_index < PG_NARGS() && PG_ARGISNULL(arg_index)) {
+        if (arg_index < PG_NARGS()) {
             lwdebug(1, "Get is_inverse");
             is_inverse = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
-            arg_index += 1;
         }
+        arg_index += 1;
 
         bool is_arc = false;
-        if (arg_index < PG_NARGS() && PG_ARGISNULL(arg_index)) {
+        if (arg_index < PG_NARGS() ) {
             lwdebug(1, "Get is_arc");
             is_arc = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
-            arg_index += 1;
         }
+        arg_index += 1;
 
         bool is_mile = false;
-        if (arg_index < PG_NARGS() && PG_ARGISNULL(arg_index)) {
+        if (arg_index < PG_NARGS() ) {
             lwdebug(1, "Get is_mile");
             is_mile = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
-            arg_index += 1;
         }
+        arg_index += 1;
 
         bool adaptive_bandwidth = false;
-        if (arg_index < PG_NARGS() && PG_ARGISNULL(arg_index)) {
+        if (arg_index < PG_NARGS() ) {
             lwdebug(1, "Enter adaptive_bandwidth: %d-%d", arg_index, PG_NARGS());
             adaptive_bandwidth = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
-            arg_index += 1;
         }
+        arg_index += 1;
 
         bool use_kernel_diagonals = false;
-        if (arg_index < PG_NARGS() && PG_ARGISNULL(arg_index)) {
+        if (arg_index < PG_NARGS()) {
             lwdebug(1, "Get use_kernel_diagonals");
             use_kernel_diagonals = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
-            arg_index += 1;
         }
+        arg_index += 1;
 
         // create weights
         lwdebug(1, "Exit pg_kernel_knn_weights_window. create weights.");
@@ -316,9 +314,25 @@ Datum pg_kernel_knn_weights_window(PG_FUNCTION_ARGS) {
 }
 
 /**
+ * KnnCollectionState
+ *
+ * This is used for collecting geometries and fids for the Aggregate SQL functions
+ */
+typedef struct
+{
+    List *geoms;  /* collected geometries */
+    List *ogc_fids;
+    int k;
+    double power;
+    bool is_arc;
+    bool is_mile;
+    Oid geomOid;
+} KnnCollectionState;
+
+/**
  * bytea_knn_geom_transfn
  *
- * sfunc for aggregate SQL function `geoda_knn_weights()`
+ * sfunc for Aggregate SQL function `geoda_knn_weights()`
  *
  * @param fcinfo
  * @return

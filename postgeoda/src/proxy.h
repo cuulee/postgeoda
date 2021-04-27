@@ -122,15 +122,12 @@ PGWeight* create_kernel_knn_weights(List *fids, List *geoms, int k, double power
  * @param is_arc
  * @param is_mile
  * @param kernel
- * @param bandwidth
- * @param adaptive_bandwidth
  * @param use_kernel_diagonal
  * @return
  */
 PGWeight* create_kernel_weights(List *fids, List *geoms, double dist_threshold,
                                 double power, bool is_inverse, bool is_arc,
                                 bool is_mile, const char* kernel,
-                                double bandwidth, bool adaptive_bandwidth,
                                 bool use_kernel_diagonal);
  /**
   *

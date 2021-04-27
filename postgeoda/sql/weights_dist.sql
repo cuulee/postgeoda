@@ -3,6 +3,8 @@
 -- Date: 2021-4-23
 -- Changes:
 -- 2021-4-23 Add distance_weights() as the major interface for queen weights creation
+-- 2021-4-26 Add min_distthreshold()
+-- 2021-4-27 Add kernel_weights()
 --------------------------------------
 
 --------------------------------------
@@ -63,4 +65,17 @@ CREATE OR REPLACE FUNCTION distance_weights(
 AS 'MODULE_PATHNAME', 'pg_distance_weights_window'
     LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
 
+--------------------------------------
+-- MAIN INTERFACE kernel_weights(fid, wkb_geometry, 103.0, 'gaussian')
+--------------------------------------
+CREATE OR REPLACE FUNCTION kernel_weights(anyelement, bytea, numeric, character varying)
+    RETURNS bytea
+AS 'MODULE_PATHNAME', 'pg_kernel_weights_window'
+    LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
 
+-- kernel_weights(gid, geom, 103.0, 'gaussian', power, is_inverse, is_arc, is_mile, use_kernel_diagonals)
+CREATE OR REPLACE FUNCTION kernel_weights(anyelement, bytea, numeric, character varying,
+    numeric, boolean, boolean, boolean)
+    RETURNS bytea
+AS 'MODULE_PATHNAME', 'pg_kernel_weights_window'
+    LANGUAGE 'c' IMMUTABLE STRICT WINDOW;

@@ -105,40 +105,40 @@ Datum pg_distance_weights_window(PG_FUNCTION_ARGS) {
 
         // read arguments: dist_thres, power, is_inverse, is_arc, is_mile
         double dist_thres = 0.0;
-        if (arg_index < PG_NARGS() && PG_ARGISNULL(arg_index)) {
+        if (arg_index < PG_NARGS() ) {
             dist_thres = DatumGetFloat4(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
             if (isnull || dist_thres <= 0) {
                 PG_RETURN_NULL();
             }
-            arg_index += 1;
         }
+        arg_index += 1;
 
         double power = 1.0;
-        if (arg_index < PG_NARGS() && PG_ARGISNULL(arg_index)) {
+        if (arg_index < PG_NARGS()) {
             power = DatumGetFloat4(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
             if (isnull || power <= 0) {
                 power = 1.0;
             }
-            arg_index += 1;
         }
+        arg_index += 1;
 
         bool is_inverse = false;
-        if (arg_index < PG_NARGS() && PG_ARGISNULL(arg_index)) {
+        if (arg_index < PG_NARGS() ) {
             is_inverse = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
-            arg_index += 1;
         }
+        arg_index += 1;
 
         bool is_arc = false;
-        if (arg_index < PG_NARGS() && PG_ARGISNULL(arg_index)) {
+        if (arg_index < PG_NARGS()) {
             is_arc = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
-            arg_index += 1;
         }
+        arg_index += 1;
 
         bool is_mile = false;
-        if (arg_index < PG_NARGS() && PG_ARGISNULL(arg_index)) {
+        if (arg_index < PG_NARGS()) {
             is_mile = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
-            arg_index += 1;
         }
+        arg_index += 1;
 
         lwdebug(4, "pg_distance_weights_window: create_distance_weights");
         // create weights
@@ -153,6 +153,146 @@ Datum pg_distance_weights_window(PG_FUNCTION_ARGS) {
         free_pgweight(w);
 
         lwdebug(1, "Exit pg_knn_weights. done.");
+    }
+
+    if (context->isnull) {
+        PG_RETURN_NULL();
+    }
+
+    curpos = WinGetCurrentPosition(winobj);
+    PG_RETURN_BYTEA_P(context->result[curpos]);
+}
+
+/**
+ * Window function for SQL `kernel_weights()`
+ * This will be the main interface for kernel weights.
+ *
+ * @param fcinfo
+ * @return
+ */
+Datum pg_kernel_weights_window(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(pg_kernel_weights_window);
+Datum pg_kernel_weights_window(PG_FUNCTION_ARGS) {
+    //this function will be called multiple times until context->isdone==true
+    //lwdebug(1, "Enter pg_kernel_weights_window.");
+
+    WindowObject winobj = PG_WINDOW_OBJECT();
+    distance_context *context;
+    int64 curpos, rowcount;
+
+    rowcount = WinGetPartitionRowCount(winobj);
+    context = (distance_context *)WinGetPartitionLocalMemory(winobj, sizeof(distance_context) + sizeof(int) * rowcount);
+
+    if (!context->isdone) {
+        bool isnull, isout;
+
+        /* We also need a non-zero N */
+        int N = (int) WinGetPartitionRowCount(winobj);
+        if (N <= 0) {
+            context->isdone = true;
+            context->isnull = true;
+            PG_RETURN_NULL();
+        }
+
+        // read data
+        List *geoms;
+        List *fids;
+
+        for (size_t i = 0; i < N; i++) {
+            // fid
+            Datum arg = WinGetFuncArgInPartition(winobj, 0, i, WINDOW_SEEK_HEAD, false, &isnull, &isout);
+            int64 fid = DatumGetInt64(arg);
+            //lwdebug(1, "pg_distance_weights_window: %d-th:%d", i, fids[i]);
+
+            // the_geom
+            Datum arg1 = WinGetFuncArgInPartition(winobj, 1, i, WINDOW_SEEK_HEAD, false, &isnull, &isout);
+            bytea *bytea_wkb = (bytea*)PG_DETOAST_DATUM_COPY(arg1);
+            uint8_t *wkb = (uint8_t *) VARDATA(bytea_wkb);
+            LWGEOM *lwgeom = lwgeom_from_wkb(wkb, VARSIZE_ANY_EXHDR(bytea_wkb), LW_PARSER_CHECK_ALL);
+            if (i==0) {
+                geoms = list_make1(lwgeom);
+                fids = list_make1_int(fid);
+            } else {
+                lappend(geoms, lwgeom);
+                lappend_int(fids, fid);
+            }
+        }
+
+        lwdebug(4, "pg_kernel_weights_window: read dist_thres");
+
+        int arg_index = 2;
+
+        // read arguments: dist_thres, power, is_inverse, is_arc, is_mile
+        double dist_thres = 0.0;
+        if (arg_index < PG_NARGS() ) {
+            dist_thres = DatumGetFloat4(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
+            if (isnull || dist_thres <= 0) {
+                PG_RETURN_NULL();
+            }
+        }
+        arg_index += 1;
+
+        char *kernel = 0;
+        if (arg_index < PG_NARGS()) {
+            VarChar *arg = (VarChar *)DatumGetVarCharPP(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
+            kernel = (char *)VARDATA(arg);
+            lwdebug(1, "Get kernel: %s", kernel);
+        }
+        if (!check_kernel(kernel)) {
+            ereport(ERROR,
+                    (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+                            errmsg("kernel has to be one of: triangular, uniform, epanechnikov, quartic, gaussian")));
+        }
+        arg_index += 1;
+
+        double power = 1.0;
+        if (arg_index < PG_NARGS()) {
+            power = DatumGetFloat4(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
+            if (isnull || power <= 0) {
+                power = 1.0;
+            }
+        }
+        arg_index += 1;
+
+        bool is_inverse = false;
+        if (arg_index < PG_NARGS() ) {
+            is_inverse = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
+        }
+        arg_index += 1;
+
+        bool is_arc = false;
+        if (arg_index < PG_NARGS()) {
+            is_arc = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
+        }
+        arg_index += 1;
+
+        bool is_mile = false;
+        if (arg_index < PG_NARGS()) {
+            is_mile = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
+        }
+        arg_index += 1;
+
+        bool use_kernel_diagonals = false;
+        if (arg_index < PG_NARGS()) {
+            lwdebug(1, "Get use_kernel_diagonals");
+            use_kernel_diagonals = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
+            arg_index += 1;
+        }
+
+        lwdebug(4, "pg_kernel_weights_window: create_distance_weights");
+        // create weights
+        PGWeight* w = create_kernel_weights(fids, geoms, dist_thres, power, is_inverse, is_arc, is_mile, kernel,
+                                            use_kernel_diagonals);
+        bytea **result = weights_to_bytea_array(w);
+
+        // Safe the result
+        context->result = result;
+        context->isdone = true;
+
+        // free PGWeight
+        free_pgweight(w);
+
+        lwdebug(1, "Exit pg_kernel_weights_window. done.");
     }
 
     if (context->isnull) {
@@ -230,8 +370,8 @@ Datum bytea_to_geom_dist_transfn(PG_FUNCTION_ARGS)
     // fid
     if (!PG_ARGISNULL(arg_index)) {
         idx = PG_GETARG_INT64(arg_index);
-        arg_index += 1;
     }
+    arg_index += 1;
 
     // the_geom
     if (!PG_ARGISNULL(arg_index)) {
@@ -239,20 +379,20 @@ Datum bytea_to_geom_dist_transfn(PG_FUNCTION_ARGS)
         uint8_t *wkb = (uint8_t *) VARDATA(bytea_wkb);
         geom = lwgeom_from_wkb(wkb, VARSIZE_ANY_EXHDR(bytea_wkb), LW_PARSER_CHECK_ALL);
         //PG_FREE_IF_COPY(bytea_wkb, 0);
-        arg_index += 1;
     }
+    arg_index += 1;
 
     // is_arc
     if (!PG_ARGISNULL(arg_index)) {
         state->is_arc = PG_GETARG_BOOL(arg_index);
-        arg_index += 1;
     }
+    arg_index += 1;
 
     // is_mile
     if (!PG_ARGISNULL(arg_index)) {
         state->is_mile = PG_GETARG_BOOL(arg_index);
-        arg_index += 1;
     }
+    arg_index += 1;
 
     // Initialize or append to list as necessary
     if (state->geoms) {
