@@ -99,26 +99,31 @@ Datum pg_queen_weights_window(PG_FUNCTION_ARGS) {
             }
         }
 
+        int arg_index = 2;
+
         // bool is_queen, int order, bool inc_lower, double precision_threshold
         int order = 1;
-        if (PG_ARGISNULL(2)) {
-            order = DatumGetInt32(WinGetFuncArgCurrent(winobj, 2, &isnull));
+        if (arg_index < PG_NARGS() && PG_ARGISNULL(arg_index)) {
+            order = DatumGetInt32(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
             if (isnull || order <= 0) {
                 order = 1;
             }
+            arg_index +=1;
         }
 
         bool inc_lower = false;
-        if (PG_ARGISNULL(3)) {
-            inc_lower = DatumGetBool(WinGetFuncArgCurrent(winobj, 3, &isnull));
+        if (arg_index < PG_NARGS() && PG_ARGISNULL(arg_index)) {
+            inc_lower = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
+            arg_index +=1;
         }
 
         double precision_threshold = 0.0;
-        if (PG_ARGISNULL(4)) {
-            precision_threshold = DatumGetFloat4(WinGetFuncArgCurrent(winobj, 4, &isnull));
+        if (arg_index < PG_NARGS() && PG_ARGISNULL(arg_index)) {
+            precision_threshold = DatumGetFloat4(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
             if (isnull || precision_threshold < 0) {
                 precision_threshold = 0.0;
             }
+            arg_index +=1;
         }
 
         // create weights
@@ -197,26 +202,31 @@ Datum pg_rook_weights_window(PG_FUNCTION_ARGS) {
             }
         }
 
+        int arg_index = 2;
+
         // bool is_queen, int order, bool inc_lower, double precision_threshold
         int order = 1;
-        if (PG_ARGISNULL(2)) {
-            order = DatumGetInt32(WinGetFuncArgCurrent(winobj, 2, &isnull));
+        if (arg_index < PG_NARGS() && PG_ARGISNULL(arg_index)) {
+            order = DatumGetInt32(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
             if (isnull || order <= 0) {
                 order = 1;
             }
+            arg_index += 1;
         }
 
         bool inc_lower = false;
-        if (PG_ARGISNULL(3)) {
-            inc_lower = DatumGetBool(WinGetFuncArgCurrent(winobj, 3, &isnull));
+        if (arg_index < PG_NARGS() && PG_ARGISNULL(arg_index)) {
+            inc_lower = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
+            arg_index += 1;
         }
 
         double precision_threshold = 0.0;
-        if (PG_ARGISNULL(3)) {
-            precision_threshold = DatumGetFloat4(WinGetFuncArgCurrent(winobj, 4, &isnull));
+        if (arg_index < PG_NARGS() && PG_ARGISNULL(arg_index)) {
+            precision_threshold = DatumGetFloat4(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
             if (isnull || precision_threshold < 0) {
                 precision_threshold = 0.0;
             }
+            arg_index += 1;
         }
 
         // create weights

@@ -304,6 +304,27 @@ static inline bytea **weights_to_bytea_array(PGWeight *w) {
     lwdebug(1,"Exit weights_to_bytea_array.");
     return results;
 }
+
+static inline bool check_kernel(const char* kernel) {
+    if (kernel == 0) {
+        return false;
+    }
+
+    if (strncmp(kernel, "triangular", 10) == 0) {
+        return true;
+    } else if (strncmp(kernel, "uniform", 7) == 0) {
+        return true;
+    } else if (strncmp(kernel, "epanechnikov", 12) == 0) {
+        return true;
+    } else if (strncmp(kernel, "quartic", 7) == 0) {
+        return true;
+    } else if (strncmp(kernel, "gaussian", 8) == 0) {
+        return true;
+    }
+
+    return false;
+}
+
 #ifdef __cplusplus
 }
 #endif

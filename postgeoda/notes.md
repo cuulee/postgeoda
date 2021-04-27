@@ -189,16 +189,23 @@ NOTE: the above SQL is very slow on large dataset. It took minutes to run. The p
 `ST_Distance(t1.geom, t2.geom)` in WHERE clause will compute the actual distance for all 
 pairs, which is not necessary at all in this task. 
 
-PostGeoDa provides the SQL function `min_distthreshold()` to fulfil the same task. Instead
-of compute the actual distance for all pairs, this function will use the spatial index to
+PostGeoDa provides a much faster SQL function `min_distthreshold()` to fulfil the same task. Instead of compute the actual distance for all pairs, this function will use the spatial index to
 find the nearest neighbor for each observation, then compute the distance and pick the smallest
 distance:
 
 ```SQL
-SELECT min_distthreshold(geom) FROM sdoh
+SELECT min_distthreshold(gid, geom) FROM sdoh
+-- output
+-- 0.916502
 ```
 
-### 3. LISA
+Last, using the minimum pairwise distance, we can create a distance-based spatial weights:
+
+```SQL
+SELECT gid, distance_weights(gid, geom, 0.916502) OVER() FROM sdoh
+````
+
+### 4. LISA
 
 * Local Moran using binary weights (window function)
 
@@ -235,6 +242,8 @@ AS lisa
 ## Logs
 
 ### 4/1/2021
+
+For brew installed postgresql:
 
 ```SQL
 pg_ctl -D /opt/homebrew/var/postgresql@11 start

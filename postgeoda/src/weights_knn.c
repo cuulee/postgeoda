@@ -3,6 +3,7 @@
  *
  * Changes:
  * 2021-1-27 Update to use libgeoda 0.0.6
+ * 2021-4-26 Add pg_kernel_knn_weights_window() for kernel weights
  */
 
 #include <postgres.h>
@@ -156,6 +157,154 @@ Datum pg_knn_weights_window(PG_FUNCTION_ARGS) {
         free_pgweight(w);
 
         lwdebug(1, "Exit pg_knn_weights. done.");
+    }
+
+    if (context->isnull) {
+        PG_RETURN_NULL();
+    }
+
+    curpos = WinGetCurrentPosition(winobj);
+    PG_RETURN_BYTEA_P(context->result[curpos]);
+}
+
+/**
+ * pg_kernel_knn_weights_window
+ *
+ * This function is for Windows SQL function: kernel_knn_weights()
+ *
+ * @param fcinfo
+ * @return
+ */
+Datum pg_kernel_knn_weights_window(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(pg_kernel_knn_weights_window);
+Datum pg_kernel_knn_weights_window(PG_FUNCTION_ARGS) {
+    WindowObject winobj = PG_WINDOW_OBJECT();
+    knn_context *context;
+    int64 curpos, rowcount;
+
+    rowcount = WinGetPartitionRowCount(winobj);
+    context = (knn_context *)WinGetPartitionLocalMemory(winobj, sizeof(KnnCollectionState) + sizeof(int) * rowcount);
+
+    if (!context->isdone) {
+        bool isnull, isout;
+
+        /* We also need a non-zero N */
+        int N = (int) WinGetPartitionRowCount(winobj);
+        if (N <= 0) {
+            context->isdone = true;
+            context->isnull = true;
+            PG_RETURN_NULL();
+        }
+
+        // read data
+        List *geoms;
+        List *fids;
+
+        for (size_t i = 0; i < N; i++) {
+            // fid
+            Datum arg = WinGetFuncArgInPartition(winobj, 0, i, WINDOW_SEEK_HEAD, false, &isnull, &isout);
+            int64 fid = DatumGetInt64(arg);
+            //lwdebug(1, "pg_kernel_knn_weights_window: %d-th:%d", i, fids[i]);
+
+            // the_geom
+            Datum arg1 = WinGetFuncArgInPartition(winobj, 1, i, WINDOW_SEEK_HEAD, false, &isnull, &isout);
+            bytea *bytea_wkb = (bytea*)PG_DETOAST_DATUM_COPY(arg1);
+            uint8_t *wkb = (uint8_t *) VARDATA(bytea_wkb);
+            LWGEOM *lwgeom = lwgeom_from_wkb(wkb, VARSIZE_ANY_EXHDR(bytea_wkb), LW_PARSER_CHECK_ALL);
+            if (i==0) {
+                geoms = list_make1(lwgeom);
+                fids = list_make1_int(fid);
+            } else {
+                lappend(geoms, lwgeom);
+                lappend_int(fids, fid);
+            }
+        }
+
+        int arg_index = 2;
+
+        // read arguments
+        int k = 4;
+        if (PG_ARGISNULL(arg_index)) {
+            k = DatumGetInt32(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
+            if (isnull || k <= 0) {
+                k = 4;
+            }
+        }
+        arg_index += 1;
+
+        char *kernel = 0;
+        if (PG_ARGISNULL(arg_index)) {
+            VarChar *arg = (VarChar *)DatumGetVarCharPP(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
+            kernel = (char *)VARDATA(arg);
+            lwdebug(1, "Get kernel: %s", kernel);
+        }
+        if (!check_kernel(kernel)) {
+            ereport(ERROR,
+                    (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+                            errmsg("kernel has to be one of: triangular, uniform, epanechnikov, quartic, gaussian")));
+        }
+        arg_index += 1;
+
+        double power = 1.0;
+        if (arg_index < PG_NARGS() && PG_ARGISNULL(arg_index)) {
+            lwdebug(1, "Get power");
+            power = DatumGetFloat4(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
+            if (isnull || power < 0) {
+                power = 1.0;
+            }
+            arg_index += 1;
+        }
+
+        bool is_inverse = false;
+        if (arg_index < PG_NARGS() && PG_ARGISNULL(arg_index)) {
+            lwdebug(1, "Get is_inverse");
+            is_inverse = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
+            arg_index += 1;
+        }
+
+        bool is_arc = false;
+        if (arg_index < PG_NARGS() && PG_ARGISNULL(arg_index)) {
+            lwdebug(1, "Get is_arc");
+            is_arc = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
+            arg_index += 1;
+        }
+
+        bool is_mile = false;
+        if (arg_index < PG_NARGS() && PG_ARGISNULL(arg_index)) {
+            lwdebug(1, "Get is_mile");
+            is_mile = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
+            arg_index += 1;
+        }
+
+        bool adaptive_bandwidth = false;
+        if (arg_index < PG_NARGS() && PG_ARGISNULL(arg_index)) {
+            lwdebug(1, "Enter adaptive_bandwidth: %d-%d", arg_index, PG_NARGS());
+            adaptive_bandwidth = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
+            arg_index += 1;
+        }
+
+        bool use_kernel_diagonals = false;
+        if (arg_index < PG_NARGS() && PG_ARGISNULL(arg_index)) {
+            lwdebug(1, "Get use_kernel_diagonals");
+            use_kernel_diagonals = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
+            arg_index += 1;
+        }
+
+        // create weights
+        lwdebug(1, "Exit pg_kernel_knn_weights_window. create weights.");
+        double bandwidth = 0;
+        PGWeight* w = create_kernel_knn_weights(fids, geoms, k, power, is_inverse, is_arc, is_mile,
+                                                kernel, bandwidth, adaptive_bandwidth, use_kernel_diagonals);
+        bytea **result = weights_to_bytea_array(w);
+
+        // Safe the result
+        context->result = result;
+        context->isdone = true;
+
+        // free PGWeight
+        free_pgweight(w);
+
+        lwdebug(1, "Exit pg_kernel_knn_weights_window. done.");
     }
 
     if (context->isnull) {

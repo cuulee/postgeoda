@@ -135,13 +135,14 @@ PGWeight* create_knn_weights(List *lfids, List *lwgeoms, int k, double power,
 
 PGWeight* create_kernel_knn_weights(List *lfids, List *lwgeoms, int k, double power,
                                     bool is_inverse, bool is_arc, bool is_mile,
-                                    std::string kernel,
+                                    const char* kernel,
                                     double bandwidth, bool adaptive_bandwidth,
                                     bool use_kernel_diagonal)
 {
     lwdebug(1,"Enter create_kernel_knn_weights.");
     PostGeoDa* geoda = build_pg_geoda(lfids, lwgeoms);
-    PGWeight *w = geoda->CreateKnnWeights(k, power, is_inverse, is_arc, is_mile);
+    PGWeight *w = geoda->CreateKnnWeights(k, power, is_inverse, is_arc, is_mile, kernel, bandwidth,
+                                          adaptive_bandwidth, use_kernel_diagonal);
     delete geoda;
     lwdebug(1,"Exit create_kernel_knn_weights.");
     return w;
@@ -167,19 +168,6 @@ PGWeight* create_kernel_weights(List *lfids, List *lwgeoms, int k, double power,
     PGWeight *w = geoda->CreateKnnWeights(k, power, is_inverse, is_arc, is_mile);
     delete geoda;
     lwdebug(1,"Exit create_kernel_weights.");
-    return w;
-}
-
-PGWeight* create_kernel_knn_weights(List *fids, List *geoms, int k, double power,
-                                    bool is_inverse, bool is_arc, bool is_mile, const char* kernel,
-                                    double bandwidth, bool adaptive_bandwidth, bool use_kernel_diagonal)
-{
-    lwdebug(1,"Enter create_kernel_knn_weights.");
-    PostGeoDa* geoda = build_pg_geoda(fids, geoms);
-    PGWeight *w = geoda->CreateKnnWeights(k, power, is_inverse, is_arc, is_mile, kernel, bandwidth, adaptive_bandwidth,
-                                          use_kernel_diagonal);
-    delete geoda;
-    lwdebug(1,"Exit create_kernel_knn_weights.");
     return w;
 }
 

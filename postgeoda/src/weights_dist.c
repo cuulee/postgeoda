@@ -83,7 +83,7 @@ Datum pg_distance_weights_window(PG_FUNCTION_ARGS) {
             // fid
             Datum arg = WinGetFuncArgInPartition(winobj, 0, i, WINDOW_SEEK_HEAD, false, &isnull, &isout);
             int64 fid = DatumGetInt64(arg);
-            //lwdebug(1, "local_g_window_bytea: %d-th:%d", i, fids[i]);
+            //lwdebug(1, "pg_distance_weights_window: %d-th:%d", i, fids[i]);
 
             // the_geom
             Datum arg1 = WinGetFuncArgInPartition(winobj, 1, i, WINDOW_SEEK_HEAD, false, &isnull, &isout);
@@ -99,38 +99,48 @@ Datum pg_distance_weights_window(PG_FUNCTION_ARGS) {
             }
         }
 
+        lwdebug(4, "pg_distance_weights_window: read dist_thres");
+
+        int arg_index = 2;
+
         // read arguments: dist_thres, power, is_inverse, is_arc, is_mile
         double dist_thres = 0.0;
-        if (PG_ARGISNULL(2)) {
-            dist_thres = DatumGetFloat4(WinGetFuncArgCurrent(winobj, 2, &isnull));
+        if (arg_index < PG_NARGS() && PG_ARGISNULL(arg_index)) {
+            dist_thres = DatumGetFloat4(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
             if (isnull || dist_thres <= 0) {
                 PG_RETURN_NULL();
             }
+            arg_index += 1;
         }
 
         double power = 1.0;
-        if (PG_ARGISNULL(3)) {
-            power = DatumGetFloat4(WinGetFuncArgCurrent(winobj, 3, &isnull));
+        if (arg_index < PG_NARGS() && PG_ARGISNULL(arg_index)) {
+            power = DatumGetFloat4(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
             if (isnull || power <= 0) {
                 power = 1.0;
             }
+            arg_index += 1;
         }
 
         bool is_inverse = false;
-        if (PG_ARGISNULL(4)) {
-            is_inverse = DatumGetBool(WinGetFuncArgCurrent(winobj, 4, &isnull));
+        if (arg_index < PG_NARGS() && PG_ARGISNULL(arg_index)) {
+            is_inverse = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
+            arg_index += 1;
         }
 
         bool is_arc = false;
-        if (PG_ARGISNULL(5)) {
-            is_arc = DatumGetBool(WinGetFuncArgCurrent(winobj, 5, &isnull));
+        if (arg_index < PG_NARGS() && PG_ARGISNULL(arg_index)) {
+            is_arc = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
+            arg_index += 1;
         }
 
         bool is_mile = false;
-        if (PG_ARGISNULL(6)) {
-            is_mile = DatumGetBool(WinGetFuncArgCurrent(winobj, 6, &isnull));
+        if (arg_index < PG_NARGS() && PG_ARGISNULL(arg_index)) {
+            is_mile = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
+            arg_index += 1;
         }
 
+        lwdebug(4, "pg_distance_weights_window: create_distance_weights");
         // create weights
         PGWeight* w = create_distance_weights(fids, geoms, dist_thres, power, is_inverse, is_arc, is_mile);
         bytea **result = weights_to_bytea_array(w);
@@ -153,6 +163,11 @@ Datum pg_distance_weights_window(PG_FUNCTION_ARGS) {
     PG_RETURN_BYTEA_P(context->result[curpos]);
 }
 
+/**
+ *  WeightsCollectionState
+ *
+ *  This is used for collecting geometries in an Aggregate function.
+ */
 typedef struct
 {
     List *geoms;  /* collected geometries */
@@ -165,7 +180,7 @@ typedef struct
 /**
  * bytea_to_geom_dist_transfn()
  *
- * This is for the aggregate function that collects all geometries and calculate the
+ * This is for the Aggregate function that collects all geometries and calculate the
  * minimum pairwise distance.
  *
  * @param fcinfo
