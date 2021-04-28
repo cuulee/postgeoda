@@ -6,7 +6,10 @@ set(SOURCE_FILES
         weights.sql
         weights_knn.sql
         weights_dist.sql
-        sa.sql
+        moran.sql
+        g.sql
+        joincount.sql
+        quantilelisa.sql
         )
 
 set(MODULE_PATHNAME "$libdir/postgeoda-${PROJECT_VERSION_MOD}")

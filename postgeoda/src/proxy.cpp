@@ -316,7 +316,8 @@ Point** pg_local_moran(int N, const int64* fids, const double* r, const uint8_t*
 }
 
 
-Point** pg_local_moran_warray(int N, const double* r, const uint8_t** bw, const size_t* w_size)
+Point** local_moran_window(int N, const double* r, const uint8_t** bw, const size_t* w_size, int permutations,
+                           char *method, double significance_cutoff, int cpu_threads, int seed)
 {
     BinWeight* w = new BinWeight(N, bw, w_size);
     int num_obs = w->num_obs;
@@ -340,10 +341,10 @@ Point** pg_local_moran_warray(int N, const double* r, const uint8_t** bw, const 
     }
 
     lwdebug(1, "pg_local_moran_warray: gda_localmoran().");
-    double significance_cutoff = 0.05;
-    int nCPUs = 8, permutations = 999, last_seed_used = 123456789;
     std::string perm_method = "lookup";
-    LISA* lisa = gda_localmoran(w, data, undefs, significance_cutoff, nCPUs, permutations, perm_method, last_seed_used);
+    if (method != 0) perm_method = method;
+
+    LISA* lisa = gda_localmoran(w, data, undefs, significance_cutoff, cpu_threads, permutations, perm_method, seed);
     const std::vector<double>& lisa_i = lisa->GetLISAValues();
     const std::vector<double>& lisa_p = lisa->GetLocalSignificanceValues();
 
@@ -373,7 +374,7 @@ double ThomasWangHashDouble(uint64_t key) {
     return 5.42101086242752217E-20 * key;
 }
 
-Point* pg_local_moran_fast(double val, const uint8_t* bw, size_t bw_size, int num_obs, const double* vals,
+Point* local_moran_fast(double val, const uint8_t* bw, size_t bw_size, int num_obs, const double* vals,
         int permutations, int rnd_seed)
 {
     if (num_obs < 1) return NULL;
@@ -474,7 +475,7 @@ Point* pg_local_moran_fast(double val, const uint8_t* bw, size_t bw_size, int nu
         lisa_p = (countLarger+1.0)/(permutations+1);
     }
 
-    lwdebug(1, "pg_local_moran_fast: complete");
+    lwdebug(1, "local_moran_fast: complete");
 
     Point *r = (Point *) palloc(sizeof(Point));
 

@@ -16,6 +16,8 @@ extern "C" {
 #include <utils/lsyscache.h> /* for get_typlenbyvalalign */
 #include <utils/geo_decls.h> /* for Point */
 
+#include "lisa.h"
+
 // Structure to exchange weights data between PG and libgeoda
 
 /**
@@ -177,7 +179,12 @@ typedef struct PGLISA
 void free_pglisa(PGLISA *lisa);
 
 /**
+ * pg_local_moran()
  *
+ * The local moran function used for Window SQL function local_moran_b(), which needs
+ * to take the spatial weights as a whole as an input parameter.
+ *
+ * This will be depreciated.
  * @param N
  * @param fids
  * @param r
@@ -186,9 +193,34 @@ void free_pglisa(PGLISA *lisa);
  */
 Point** pg_local_moran(int N, const int64* fids, const double* r, const uint8_t* bw);
 
-Point** pg_local_moran_warray(int N, const double* r, const uint8_t** bw, const size_t* w_size);
+/**
+ * local_moran_window()
+ *
+ * The local moran function used for Window SQL function local_moran()
+ * @param N
+ * @param r
+ * @param bw
+ * @param w_size
+ * @return
+ */
+Point** local_moran_window(int N, const double* r, const uint8_t** bw, const size_t* w_size, int permutations,
+                           char *method, double significance_cutoff, int cpu_threads, int seed);
 
-Point* pg_local_moran_fast(double val, const uint8_t* bw, size_t bw_size, int num_obs, const double* arr,
+/**
+ * pg_local_moran_fast()
+ *
+ * The local moran function used for Window SQL function local_moran_fast()
+ *
+ * @param val
+ * @param bw
+ * @param bw_size
+ * @param num_obs
+ * @param arr
+ * @param permutations
+ * @param rnd_seed
+ * @return
+ */
+Point* local_moran_fast(double val, const uint8_t* bw, size_t bw_size, int num_obs, const double* arr,
                            int permutations, int rnd_seed);
 
 

@@ -389,3 +389,44 @@ proxy.h/cpp
 ```c
 Point** pg_quantilelisa()
 ```
+
+scratch pad
+
+SELECT min_distthreshold(gid, geom) FROM sdoh
+
+SELECT distance_weights(gid, geom, 0.916502, 2, false, false, false) OVER() FROM sdoh;
+
+SELECT knn_weights(gid, geom, 4, 1.0, FALSE, FALSE) OVER() FROM sdoh
+
+SELECT kernel_knn_weights(gid, geom, 4, 'gaussian') OVER() FROM sdoh
+
+SELECT kernel_knn_weights(gid, geom, 4, 'gaussian', 1.0, FALSE, FALSE, FALSE, FALSE, FALSE) OVER() FROM sdoh
+
+SELECT kernel_weights(gid, geom, 0.916502, 'gaussian') OVER() FROM sdoh
+
+SELECT queen_weights(gid, geom) OVER() FROM sdoh;
+
+ALTER TABLE sdoh ADD COLUMN IF NOT EXISTS queen_w bytea;
+
+UPDATE sdoh SET queen_w = w.queen_weights
+FROM (SELECT gid, queen_weights(gid, geom) OVER() FROM sdoh) as w
+WHERE sdoh.gid = w.gid
+
+SELECT local_moran(ep_pov::real, queen_w) OVER() FROM sdoh;
+
+WITH tmp AS (
+SELECT gid, ep_pov, queen_weights(gid, geom) OVER() FROM sdoh
+) SELECT gid, local_moran(ep_pov::real, queen_weights) OVER() FROM tmp
+
+SELECT gid, local_moran(ep_pov::real, queen_weights) OVER() FROM
+( SELECT gid, ep_pov, queen_weights(gid, geom) OVER() FROM sdoh) AS tmp
+
+--save result
+ALTER TABLE sdoh ADD COLUMN IF NOT EXISTS lmq float8[];
+
+UPDATE sdoh SET lmq = tmp.local_moran
+FROM (
+SELECT gid, local_moran(ep_pov::real, queen_w) OVER() FROM sdoh
+) AS tmp
+WHERE sdoh.gid = tmp.gid
+

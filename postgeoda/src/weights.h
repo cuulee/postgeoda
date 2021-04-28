@@ -305,6 +305,14 @@ static inline bytea **weights_to_bytea_array(PGWeight *w) {
     return results;
 }
 
+/**
+ * check_kernel
+ *
+ * Check if the input kernel method is valid.
+ *
+ * @param kernel
+ * @return
+ */
 static inline bool check_kernel(const char* kernel) {
     if (kernel == 0) {
         return false;
