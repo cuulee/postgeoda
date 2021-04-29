@@ -16,6 +16,7 @@ extern "C" {
 #include <utils/lsyscache.h> /* for get_typlenbyvalalign */
 #include <utils/geo_decls.h> /* for Point */
 
+
 // Structure to exchange weights data between PG and libgeoda
 
 /**
@@ -61,6 +62,7 @@ typedef struct PGWeight
 } PGWeight;
 
 void free_pgweight(PGWeight *w);
+
 
 /**
  * Contiguity (queen/rook) weights functions bridging PG and libgeoda
@@ -271,6 +273,10 @@ double** local_quantilelisa_window(int k, int quantile, int N, const double* r, 
 double** local_multiquantilelisa_window(int n_vars, int* k, int* quantile, int N, const double** r, const uint8_t** bw,
                                         const size_t* w_size, int permutations, char *method,
                                         double significance_cutoff, int cpu_threads, int seed);
+
+double** neighbor_match_test_window(List *lfids, List *lwgeoms, int k, int n_vars, int N, const double** r,
+                                    double power, bool is_inverse, bool is_arc, bool is_mile,
+                                    const char *scale_method, const char* dist_type);
 
 #ifdef __cplusplus
 }

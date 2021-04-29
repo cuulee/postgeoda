@@ -5,6 +5,7 @@
  * 2021-1-27 Update to use libgeoda 0.0.6;
  * 2021-4-23 Update create_knn_weights(); add create_kernel_weights();
  * add create_kernel_knn_weights();
+ * 2021-4-28 add neighbor_match_test_window()
  */
 
 #include <vector>
@@ -12,6 +13,7 @@
 #include <libgeoda/gda_sa.h>
 #include <libgeoda/sa/LISA.h>
 #include <libgeoda/weights/GalWeight.h>
+#include <libgeoda/gda_weights.h>
 #include <libgeoda/GeoDaSet.h>
 #include <libgeoda/GenUtils.h>
 #include <libgeoda/pg/geoms.h>
@@ -283,10 +285,6 @@ double** local_moran_window(int N, const double* r, const uint8_t** bw, const si
     int num_obs = w->num_obs; // number of observations in weights in the query Window, == N
     const std::vector<uint32_t>& fids = w->getFids(); // fids starts from 0
 
-    for (int i=0; i<fids.size(); ++i) {
-        lwdebug(1, "local_moran_window: fid=%d", fids[i]);
-    }
-
     // construct data for observations that may or may NOT be in the Window
     // for those not in the Window, they will be treated as undefined/null
     std::vector<double> data(num_obs, 0);
@@ -486,5 +484,70 @@ double** local_moran_window_bytea(int N, const int64* fids, const double* r, con
     // clean
     delete lisa;
     lwdebug(1, "Exit pg_local_moran.");
+    return result;
+}
+
+double** neighbor_match_test_window(List *lfids, List *lwgeoms, int k, int n_vars, int N, const double** r,
+                                    double power, bool is_inverse, bool is_arc, bool is_mile,
+                                    const char *scale_method, const char* dist_type)
+{
+    lwdebug(1, "Enter neighbor_match_test_window.");
+
+    // create KNN spatial weights
+    PostGeoDa* geoda = build_pg_geoda(lfids, lwgeoms);
+
+    std::string poly_id = "", kernel = "";
+    double bandwidth = 0;
+    bool adaptive_bandwidth = false, use_kernel_diagonal = false;
+    GeoDaWeight* w = gda_knn_weights(geoda, k, power, is_inverse, is_arc, is_mile, kernel, bandwidth,
+                                     adaptive_bandwidth, use_kernel_diagonal, poly_id);
+
+    int num_obs = w->num_obs;
+
+    lwdebug(1, "Enter CreateKnnWeights: num_obs=%d", w->num_obs);
+    lwdebug(1, "Enter CreateKnnWeights: min_nbrs=%d", w->GetMinNbrs());
+    lwdebug(1, "Enter CreateKnnWeights: sparsity=%f", w->GetSparsity());
+
+    std::vector<std::vector<double> > data_arr;
+    std::vector<std::vector<bool> > undefs_arr;
+
+    for (int i=0; i< n_vars; ++i) {
+        std::vector<double> data(num_obs, 0);
+        std::vector<bool> undefs(num_obs, true);
+        data_arr.push_back(data);
+        undefs_arr.push_back(undefs);
+    }
+
+    for (int i=0; i<N; ++i) {
+        for (int j=0; j< n_vars; ++j) {
+            data_arr[j][i] = r[i][j];
+            undefs_arr[j][i] = false;
+        }
+        //lwdebug(1, "r[%d][0,1]=%f,%f", i, r[i][0], r[i][1]);
+    }
+
+    lwdebug(1, "neighbor_match_test_window: neighbor_match_test().");
+
+    std::string scale_method_str = "standardize";
+    if (scale_method != 0) scale_method_str = scale_method;
+
+    std::string dist_type_str = "euclidean";
+    if (dist_type != 0) dist_type_str = dist_type;
+
+    std::vector<std::vector<double> > nmt = gda_neighbor_match_test(w, k, data_arr, scale_method_str, dist_type_str);
+
+    // results
+    double **result = (double **) palloc(sizeof(double*) * N);
+    for (int i = 0; i < N; i++) {
+        result[i] = (double *) palloc(sizeof(double) * 2);
+        result[i][0] = nmt[0][i];
+        result[i][1] = nmt[1][i];
+    }
+
+    // clean
+    delete w;
+    delete geoda;
+
+    lwdebug(1, "neighbor_match_test_window: return results.");
     return result;
 }

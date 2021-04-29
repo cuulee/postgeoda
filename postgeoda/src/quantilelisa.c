@@ -262,6 +262,7 @@ Datum pg_local_multiquantilelisa_window(PG_FUNCTION_ARGS) {
         context->isdone = true;
 
         // Clean
+        for (int i=0; i<N; ++i) lwfree(r[i]);
         lwfree(r);
         lwfree(w);
         lwfree(w_size);

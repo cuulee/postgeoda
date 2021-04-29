@@ -17,6 +17,7 @@
 #include <catalog/namespace.h>
 #include <utils/geo_decls.h>
 #include <utils/lsyscache.h> /* for get_typlenbyvalalign */
+
 #ifdef __cplusplus
 extern "C" {
 #endif

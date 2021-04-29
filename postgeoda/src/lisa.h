@@ -3,6 +3,7 @@
  *
  * Changes:
  * 2021-1-27 Update to use libgeoda 0.0.6; Abstract it for all different lisa functions
+ * 2021-4-28 add check_scale_method(), check_scale_method()
  */
 
 #ifndef GEODA_LISA_H
@@ -102,6 +103,42 @@ static inline bool check_perm_method(const char* method) {
     if (strncmp(method, "complete", 8) == 0) {
         return true;
     } else if (strncmp(method, "lookup", 6) == 0) {
+        return true;
+    }
+
+    return false;
+}
+
+static inline bool check_scale_method(const char* method) {
+    if (method == 0) {
+        return false;
+    }
+
+    if (strncmp(method, "raw", 3) == 0) {
+        return true;
+    } else if (strncmp(method, "standardize", 11) == 0) {
+        return true;
+    } else if (strncmp(method, "demean", 5) == 0) {
+        return true;
+    } else if (strncmp(method, "mad", 3) == 0) {
+        return true;
+    } else if (strncmp(method, "range_standardize", 17) == 0) {
+        return true;
+    } else if (strncmp(method, "range_adjust", 12) == 0) {
+        return true;
+    }
+
+    return false;
+}
+
+static inline bool check_dist_type(const char* typ) {
+    if (typ == 0) {
+        return false;
+    }
+
+    if (strncmp(typ, "euclidean", 9) == 0) {
+        return true;
+    } else if (strncmp(typ, "manhattan", 9) == 0) {
         return true;
     }
 

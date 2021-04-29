@@ -43,6 +43,7 @@ set(SOURCES
         joincount.c
         localg.c
         quantilelisa.c
+        neighbor_match.c
         proxy.cpp
         postgeoda.cpp
         binweight.cpp
