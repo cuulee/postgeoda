@@ -3,6 +3,9 @@
  *
  * Changes:
  * 2021-1-27 Update to use libgeoda 0.0.6; add pg_local_joincount()
+ * 2021-4-27 Change to local_joincount_window(), local_bijoincount_window(),
+ * local_multijoincount_window()
+ * 2021-4-28 Update functions with new BinWeight() constructor for Window query
  */
 
 #include <vector>
@@ -19,72 +22,62 @@
 #include "postgeoda.h"
 #include "proxy.h"
 
-Point** pg_local_joincount(int N, const int64* fids, const double* r, const uint8_t* bw)
+double** local_joincount_window(int N, const double* r, const uint8_t** bw, const size_t* w_size, int permutations,
+                                char *method, double significance_cutoff, int cpu_threads, int seed)
 {
-    BinWeight* w = new BinWeight(bw); // complete weights
-    int64 num_obs  = w->num_obs;
+    BinWeight* w = new BinWeight(N, bw, w_size);
+    int num_obs = w->num_obs;
 
-    // NOTE: num_obs could be larger than N
-    // input values could be a subset of total values
-    std::vector<double> data(num_obs +1 , 0);
-    std::vector<bool> undefs(num_obs +1, true);
+    std::vector<double> data(num_obs, 0);
+    std::vector<bool> undefs(num_obs, true);
 
-    for (size_t i=0; i<N; ++i) {
-        size_t fid = fids[i];
-        if (fid > num_obs) {
-            lwerror("pg_local_joincount: fid not match in weights. fid > w.num_obs %d", fids[i]) ;
-        }
-        data[fid] = r[i];
-        undefs[fid] = false;
-        //lwdebug(1, "pg_local_joincount: data[%d] = %f, nn=%d", fid, data[fid], w->GetNbrSize(fid));
+    for (int i=0; i<N; ++i) {
+        data[i] = r[i];
+        undefs[i] = false;
     }
 
-    lwdebug(1, "pg_local_joincount: gda_localjoincount()");
-    double significance_cutoff = 0.05;
-    int nCPUs = 8, permutations = 999, last_seed_used = 123456789;
-    std::string perm_method = "complete";
+    std::string perm_method = "lookup";
+    if (method != 0) perm_method = method;
 
-    LISA* lisa = gda_localjoincount(w, data, undefs, significance_cutoff, nCPUs, permutations, perm_method, last_seed_used);
-    // report: cluster indicator and p-value
-    const std::vector<int>& lisa_c = lisa->GetClusterIndicators();
+    LISA* lisa = gda_localjoincount(w, data, undefs, significance_cutoff, cpu_threads, permutations, perm_method, seed);
+    const std::vector<double>& lisa_i = lisa->GetLISAValues();
     const std::vector<double>& lisa_p = lisa->GetLocalSignificanceValues();
+    const std::vector<int>& lisa_c = lisa->GetNumNeighbors();
 
     // results
-    Point **result = (Point **) palloc(sizeof(Point*) * N);
-    for (size_t i = 0; i < N; i++) {
-        result[i] = (Point *) palloc(sizeof(Point));
-        result[i]->x = lisa_c[ fids[i] ];
-        result[i]->y = lisa_p[ fids[i] ];
+    double **result = (double **) palloc(sizeof(double*) * N);
+    for (int i = 0; i < N; i++) {
+        result[i] = (double *) palloc(sizeof(double) * 3);
+        result[i][0] = lisa_i[i];
+        result[i][1] = lisa_p[i];
+        result[i][2] = lisa_c[i];
     }
 
     // clean
     delete lisa;
-    delete w;
-    lwdebug(1, "Exit pg_local_joincount.");
+
+    lwdebug(1, "local_joincount_window: return results.");
     return result;
 }
 
-
-Point** pg_bivariate_local_joincount(int N, const int64* fids, const double* r1, const double* r2, const uint8_t* bw)
+double** local_bijoincount_window(int N, const double* r1, const double* r2, const uint8_t** bw, const size_t* w_size, int permutations,
+                                  char *method, double significance_cutoff, int cpu_threads, int seed)
 {
-    BinWeight* w = new BinWeight(bw); // complete weights
-    int64 num_obs  = w->num_obs;
+    BinWeight* w = new BinWeight(N, bw, w_size);
+    int num_obs = w->num_obs;
 
-    // NOTE: num_obs could be larger than N
-    // input values could be a subset of total values
-    std::vector<double> data1(num_obs +1 , 0);
-    std::vector<double> data2(num_obs +1 , 0);
-    std::vector<bool> undefs1(num_obs +1, false);
-    std::vector<bool> undefs2(num_obs +1, false);
+    // check if w matches input fids
 
-    for (size_t i=0; i<N; ++i) {
-        size_t fid = fids[i];
-        if (fid > num_obs) {
-            lwerror("pg_bivariate_local_joincount: fid not match in weights. fid > w.num_obs %d", fids[i]) ;
-        }
-        data1[fid] = r1[i];
-        data2[fid] = r2[i];
-        //lwdebug(1, "pg_bivariate_local_joincount: data[%d] = %f, nn=%d", fid, data[fid], w->GetNbrSize(fid));
+    std::vector<double> data1(num_obs, 0);
+    std::vector<bool> undefs1(num_obs, true);
+    std::vector<double> data2(num_obs, 0);
+    std::vector<bool> undefs2(num_obs, true);
+
+    for (int i=0; i<N; ++i) {
+        data1[i] = r1[i];
+        data2[i] = r2[i];
+        undefs1[i] = false;
+        undefs2[i] = false;
     }
 
     std::vector<std::vector<double> > data;
@@ -95,27 +88,78 @@ Point** pg_bivariate_local_joincount(int N, const int64* fids, const double* r1,
     undefs.push_back(undefs1);
     undefs.push_back(undefs2);
 
-    lwdebug(1, "pg_bivariate_local_joincount: pg_bivariate_local_joincount()");
-    double significance_cutoff = 0.05;
-    int nCPUs = 8, permutations = 999, last_seed_used = 123456789;
-    std::string perm_method = "complete";
+    std::string perm_method = "lookup";
+    if (method != 0) perm_method = method;
 
-    LISA* lisa = gda_localmultijoincount(w, data, undefs, significance_cutoff, nCPUs, permutations, perm_method, last_seed_used);
-    // report: cluster indicator and p-value
-    const std::vector<int>& lisa_c = lisa->GetClusterIndicators();
+    LISA* lisa = gda_localmultijoincount(w, data, undefs, significance_cutoff, cpu_threads, permutations, perm_method, seed);
+    const std::vector<double>& lisa_i = lisa->GetLISAValues();
     const std::vector<double>& lisa_p = lisa->GetLocalSignificanceValues();
+    const std::vector<int>& lisa_c = lisa->GetNumNeighbors();
 
     // results
-    Point **result = (Point **) palloc(sizeof(Point*) * N);
+    double **result = (double **) palloc(sizeof(double*) * N);
     for (size_t i = 0; i < N; i++) {
-        result[i] = (Point *) palloc(sizeof(Point));
-        result[i]->x = lisa_c[ fids[i] ];
-        result[i]->y = lisa_p[ fids[i] ];
+        result[i] = (double *) palloc(sizeof(double) * 3);
+        result[i][0] = lisa_i[i];
+        result[i][1] = lisa_p[i];
+        result[i][2] = lisa_c[i];
     }
 
     // clean
     delete lisa;
-    delete w;
-    lwdebug(1, "Exit pg_bivariate_local_joincount.");
+
+    lwdebug(1, "local_bijoincount_window: return results.");
+    return result;
+}
+
+double** local_multijoincount_window(int N, int n_vars, const double** r, const uint8_t** bw, const size_t* w_size, int permutations,
+                                    char *method, double significance_cutoff, int cpu_threads, int seed)
+{
+    lwdebug(1, "Enter local_multijoincount_window.");
+
+    BinWeight* w = new BinWeight(N, bw, w_size);
+    int num_obs = w->num_obs;
+
+    std::vector<std::vector<double> > data_arr;
+    std::vector<std::vector<bool> > undefs_arr;
+
+    for (int i=0; i< n_vars; ++i) {
+        std::vector<double> data(num_obs, 0);
+        std::vector<bool> undefs(num_obs, true);
+        data_arr.push_back(data);
+        undefs_arr.push_back(undefs);
+    }
+
+   for (int i=0; i<N; ++i) {
+       for (int j=0; j< n_vars; ++j) {
+            data_arr[j][i] = r[i][j];
+            undefs_arr[j][i] = false;
+        }
+    }
+
+    lwdebug(1, "local_multijoincount_window: call gda_localmultijoincount");
+
+    std::string perm_method = "lookup";
+    if (method != 0) perm_method = method;
+
+    LISA* lisa = gda_localmultijoincount(w, data_arr, undefs_arr, significance_cutoff, cpu_threads, permutations,
+                                         perm_method, seed);
+    const std::vector<double>& lisa_i = lisa->GetLISAValues();
+    const std::vector<double>& lisa_p = lisa->GetLocalSignificanceValues();
+    const std::vector<int>& lisa_c = lisa->GetNumNeighbors();
+
+    // results
+    double **result = (double **) palloc(sizeof(double*) * N);
+    for (size_t i = 0; i < N; i++) {
+        result[i] = (double *) palloc(sizeof(double) * 3);
+        result[i][0] = lisa_i[i];
+        result[i][1] = lisa_p[i];
+        result[i][2] = lisa_c[i];
+    }
+
+    // clean
+    delete lisa;
+
+    lwdebug(1, "local_multijoincount_window: return results.");
     return result;
 }

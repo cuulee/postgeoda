@@ -3,6 +3,7 @@
  *
  * Changes:
  * 2021-1-29 add local_g_window_bytea() local_gstar_window_bytea()
+ * 2021-4-28 remove old function using weights as a whole; change to pg_local_g_window(), pg_local_gstar_window();
  */
 
 
@@ -31,13 +32,24 @@ extern "C" {
 PG_MODULE_MAGIC;
 #endif
 
-Datum local_g_window_bytea(PG_FUNCTION_ARGS);
+/**
+ * pg_local_g_window()
+ *
+ * This function is for Window SQL function local_g()
+ *
+ * @param fcinfo
+ * @return
+ */
+Datum pg_local_g_window(PG_FUNCTION_ARGS);
 
-PG_FUNCTION_INFO_V1(local_g_window_bytea);
-Datum local_g_window_bytea(PG_FUNCTION_ARGS) {
+PG_FUNCTION_INFO_V1(pg_local_g_window);
+Datum pg_local_g_window(PG_FUNCTION_ARGS) {
     WindowObject winobj = PG_WINDOW_OBJECT();
     lisa_context *context;
     int64 curpos, rowcount;
+
+    Oid valsType = get_fn_expr_argtype(fcinfo->flinfo, 0);
+    check_if_numeric_type(valsType);
 
     rowcount = WinGetPartitionRowCount(winobj);
     context = (lisa_context *)WinGetPartitionLocalMemory(winobj,sizeof(lisa_context) + sizeof(int) * rowcount);
@@ -53,69 +65,90 @@ Datum local_g_window_bytea(PG_FUNCTION_ARGS) {
             PG_RETURN_NULL();
         }
 
-        // read 2nd parameter weights in bytea
-        //bytea *bw = DatumGetByteaP(WinGetFuncArgCurrent(winobj, 1, &isnull));
-        Datum arg_b = WinGetFuncArgCurrent(winobj, 2, &isnull);
-        bytea *bw = (bytea*)PG_DETOAST_DATUM_COPY(arg_b);
-        if (isnull) {
-            PG_RETURN_NULL();
-        }
-        uint8_t *w = (uint8_t*)VARDATA(bw); // NOTE memory?
+        // read data
+        uint8_t **w = lwalloc(sizeof(uint8_t *) * N);
+        size_t *w_size = lwalloc(sizeof(size_t) * N);
+        double *r = lwalloc(sizeof(double) * N);
 
-        // read 1st parameter fids
-        int64 *fids = lwalloc(sizeof(int64) * N);
+        lwdebug(0, "Init pg_local_g_window. N=%d", N);
+
         for (size_t i = 0; i < N; i++) {
             Datum arg = WinGetFuncArgInPartition(winobj, 0, i,
                                                  WINDOW_SEEK_HEAD, false, &isnull, &isout);
-            fids[i] = DatumGetInt64(arg);
-            //lwdebug(1, "local_g_window_bytea: %d-th:%d", i, fids[i]);
-        }
-
-        // Read all the values from the partition window into a list
-        Oid valsType = get_fn_expr_argtype(fcinfo->flinfo, 1);
-        check_if_numeric_type(valsType);
-
-        double *r = lwalloc(sizeof(double) * N);
-        for (size_t i = 0; i < N; i++) {
-            Datum arg = WinGetFuncArgInPartition(winobj, 1, i,
-                                                 WINDOW_SEEK_HEAD, false, &isnull, &isout);
             r[i] = get_numeric_val(valsType, arg);
-            //lwdebug(1, "local_g_window_bytea: %d-th:%f", i, r[i]);
+            Datum arg1 = WinGetFuncArgInPartition(winobj, 1, i,
+                                                  WINDOW_SEEK_HEAD, false, &isnull, &isout);
+            bytea *w_bytea = DatumGetByteaP(arg1); //shallow copy
+            uint8_t *w_val = (uint8_t *) VARDATA(w_bytea);
+            w[i] = w_val;
+            w_size[i] = VARSIZE_ANY_EXHDR(w_bytea);
         }
 
-        // compute lisa
-        Point **result = pg_local_g(N, fids, r, w);
+        // read arguments
+        int arg_index = 2;
+        lisa_arguments args = {999, 0, 0.05, 6, 123456789};
+
+        read_lisa_arguments(arg_index, PG_NARGS(), winobj, &args);
+
+        double **result = local_g_window(N, r, (const uint8_t**)w, w_size, args.permutations, args.method,
+                                             args.significance_cutoff, args.cpu_threads, args.seed);
 
         // Safe the result
         context->result = result;
         context->isdone = true;
 
-        // Clean
+        // clean
+        lwdebug(1, "Clean pg_local_g_window.");
         lwfree(r);
-        PG_FREE_IF_COPY(bw, 0);
+        lwfree(w_size);
+        lwfree(w);
 
-        lwdebug(1, "Exit local_joincount_window_bytea. free_lisa() done.");
+        lwdebug(1, "Exit pg_local_g_window.");
     }
 
-    if (context->isnull) {
+    if (context->isnull)
         PG_RETURN_NULL();
-    }
 
     curpos = WinGetCurrentPosition(winobj);
-    PG_RETURN_POINT_P(context->result[curpos]);
+
+    // Wrap the results in a new PostgreSQL array object.
+    double *p = context->result[curpos];
+    Datum elems[3];
+    elems[0] = Float8GetDatum(p[0]); // double to Datum
+    elems[1] = Float8GetDatum(p[1]);
+    elems[2] = Float8GetDatum(p[2]);
+    int nelems = 3;
+    Oid elmtype = FLOAT8OID;
+    int16 elmlen;
+    bool elmbyval;
+    char elmalign;
+    get_typlenbyvalalign(elmtype, &elmlen, &elmbyval, &elmalign);
+    ArrayType *array = construct_array(elems, nelems, elmtype, elmlen, elmbyval, elmalign);
+
+    PG_RETURN_ARRAYTYPE_P(array);
 }
 
-Datum local_gstar_window_bytea(PG_FUNCTION_ARGS);
+/**
+ * pg_local_gstar_window()
+ *
+ * This function is for Window SQL function local_gstar()
+ *
+ * @param fcinfo
+ * @return
+ */
+Datum pg_local_gstar_window(PG_FUNCTION_ARGS);
 
-PG_FUNCTION_INFO_V1(local_gstar_window_bytea);
-Datum local_gstar_window_bytea(PG_FUNCTION_ARGS) {
+PG_FUNCTION_INFO_V1(pg_local_gstar_window);
+Datum pg_local_gstar_window(PG_FUNCTION_ARGS) {
     WindowObject winobj = PG_WINDOW_OBJECT();
     lisa_context *context;
     int64 curpos, rowcount;
 
+    Oid valsType = get_fn_expr_argtype(fcinfo->flinfo, 0);
+    check_if_numeric_type(valsType);
+
     rowcount = WinGetPartitionRowCount(winobj);
-    context = (lisa_context *)WinGetPartitionLocalMemory(winobj,
-                                                         sizeof(lisa_context) + sizeof(int) * rowcount);
+    context = (lisa_context *)WinGetPartitionLocalMemory(winobj,sizeof(lisa_context) + sizeof(int) * rowcount);
 
     if (!context->isdone) {
         bool isnull, isout;
@@ -128,55 +161,68 @@ Datum local_gstar_window_bytea(PG_FUNCTION_ARGS) {
             PG_RETURN_NULL();
         }
 
-        // read 2nd parameter weights in bytea
-        //bytea *bw = DatumGetByteaP(WinGetFuncArgCurrent(winobj, 1, &isnull));
-        Datum arg_b = WinGetFuncArgCurrent(winobj, 2, &isnull);
-        bytea *bw = (bytea*)PG_DETOAST_DATUM_COPY(arg_b);
-        if (isnull) {
-            PG_RETURN_NULL();
-        }
-        uint8_t *w = (uint8_t*)VARDATA(bw); // NOTE memory?
+        // read data
+        uint8_t **w = lwalloc(sizeof(uint8_t *) * N);
+        size_t *w_size = lwalloc(sizeof(size_t) * N);
+        double *r = lwalloc(sizeof(double) * N);
 
-        // read 1st parameter fids
-        int64 *fids = lwalloc(sizeof(int64) * N);
+        lwdebug(0, "Init pg_local_gstar_window. N=%d", N);
+
         for (size_t i = 0; i < N; i++) {
             Datum arg = WinGetFuncArgInPartition(winobj, 0, i,
                                                  WINDOW_SEEK_HEAD, false, &isnull, &isout);
-            fids[i] = DatumGetInt64(arg);
-            //lwdebug(1, "local_gstar_window_bytea: %d-th:%d", i, fids[i]);
-        }
-
-        // Read all the values from the partition window into a list
-        Oid valsType = get_fn_expr_argtype(fcinfo->flinfo, 1);
-        check_if_numeric_type(valsType);
-
-        double *r = lwalloc(sizeof(double) * N);
-        for (size_t i = 0; i < N; i++) {
-            Datum arg = WinGetFuncArgInPartition(winobj, 1, i,
-                                                 WINDOW_SEEK_HEAD, false, &isnull, &isout);
             r[i] = get_numeric_val(valsType, arg);
-            //lwdebug(1, "local_gstar_window_bytea: %d-th:%f", i, r[i]);
+
+            Datum arg1 = WinGetFuncArgInPartition(winobj, 1, i,
+                                                  WINDOW_SEEK_HEAD, false, &isnull, &isout);
+            bytea *w_bytea = DatumGetByteaP(arg1); //shallow copy
+            uint8_t *w_val = (uint8_t *) VARDATA(w_bytea);
+            w[i] = w_val;
+            w_size[i] = VARSIZE_ANY_EXHDR(w_bytea);
         }
 
-        // compute lisa
-        Point **result = pg_local_gstar(N, fids, r, w);
+        // read arguments
+        int arg_index = 2;
+        lisa_arguments args = {999, 0, 0.05, 6, 123456789};
+
+        read_lisa_arguments(arg_index, PG_NARGS(), winobj, &args);
+
+        double **result = local_gstar_window(N, r, (const uint8_t**)w, w_size, args.permutations, args.method,
+                                             args.significance_cutoff, args.cpu_threads, args.seed);
 
         // Safe the result
         context->result = result;
         context->isdone = true;
 
-        // Clean
+        // clean
+        lwdebug(1, "Clean pg_local_gstar_window.");
         lwfree(r);
-        PG_FREE_IF_COPY(bw, 0);
+        lwfree(w_size);
+        lwfree(w);
 
-        lwdebug(1, "Exit local_joincount_window_bytea. free_lisa() done.");
+        lwdebug(1, "Exit pg_local_gstar_window.");
     }
 
     if (context->isnull)
         PG_RETURN_NULL();
 
     curpos = WinGetCurrentPosition(winobj);
-    PG_RETURN_POINT_P(context->result[curpos]);
+
+    // Wrap the results in a new PostgreSQL array object.
+    double *p = context->result[curpos];
+    Datum elems[3];
+    elems[0] = Float8GetDatum(p[0]); // double to Datum
+    elems[1] = Float8GetDatum(p[1]);
+    elems[2] = Float8GetDatum(p[2]);
+    int nelems = 3;
+    Oid elmtype = FLOAT8OID;
+    int16 elmlen;
+    bool elmbyval;
+    char elmalign;
+    get_typlenbyvalalign(elmtype, &elmlen, &elmbyval, &elmalign);
+    ArrayType *array = construct_array(elems, nelems, elmtype, elmlen, elmbyval, elmalign);
+
+    PG_RETURN_ARRAYTYPE_P(array);
 }
 
 #ifdef __cplusplus

@@ -3,6 +3,8 @@
  *
  * Changes:
  * 2021-1-27 Update to use libgeoda 0.0.6
+ * 2021-4-28 Update constructor: when creating weights from bytea array in a query Window, remove the neighbors not in
+ * the query window
  */
 
 #include <libgeoda/pg/utils.h>
@@ -124,62 +126,80 @@ BinWeight::BinWeight(const uint8_t* bw)
 }
 
 /**
- * Used
+ * Create weights from bytea in Window
  *
- * @param N
- * @param bw
- * @param w_size
+ * The weights will be constructed by removing the neighbors that are not in the query window
+ *
+ * @param N the length of the rows of weights (bytea)
+ * @param bw the content (byte) of all weights
+ * @param w_size the size (byte) of weights in each row
  */
 BinWeight::BinWeight(int N, const uint8_t** bw, const size_t* w_size)
 {
+    boost::unordered_map<uint32_t, size_t> fid_dict;
+
+    // get fids from the Window
     for (size_t i=0; i<N; ++i)  {
         BinElement *gl= new BinElement;
-
         const uint8_t *pos = bw[i];
-
         uint32_t fid;
-        uint16_t n_nbrs;
-
         // idx
         memcpy(&fid, pos, sizeof(uint32_t));
         pos += sizeof(uint32_t);
+        // mapping fid to index
+        fid_dict[fid] = i;
+    }
 
-        //lwdebug(1,"Enter create_weights_from_barray(). fid=%d", fid);
-        this->fids.push_back(fid);
+    // update the weights by removing neighbors that are not in the query Window
+    for (size_t i=0; i<N; ++i)  {
+        BinElement *gl= new BinElement;
+        const uint8_t *pos = bw[i];
+
+        // idx
+        uint32_t fid;
+        memcpy(&fid, pos, sizeof(uint32_t));
+        pos += sizeof(uint32_t);
 
         // number of neighbors
+        uint16_t n_nbrs;
         memcpy(&n_nbrs, pos, sizeof(uint16_t));
         pos += sizeof(uint16_t);
 
-        //lwdebug(1, "create_weights_from_barray(). neighbor of %d: %d", i, n_nbrs);
-
-        std::vector<long> nbr(n_nbrs);
         // read neighbor id
+        std::vector<long> nbr;
+        std::vector<bool> nbr_flag(n_nbrs, false);
         uint32_t n_id;
 
         for (size_t j=0; j<n_nbrs; ++j)  {
             // read neighbor id
             memcpy(&n_id, pos, sizeof(uint32_t));
             pos += sizeof(uint32_t);
-            nbr[j] = n_id;
+            if (fid_dict.find(n_id) != fid_dict.end()) {
+                nbr.push_back( fid_dict[n_id] );
+                nbr_flag[j] = true;
+            }
         }
         gl->setNbrIds(nbr);
 
         // read neighbor weights, if needed
         if (w_size[i] > (size_t)(pos - bw[i])) {
-            std::vector<double> nbrWeight(n_nbrs);
-            float n_weight;
+            std::vector<double> nbrWeight;
+            float n_weight = 0;
             for (size_t j = 0; j < n_nbrs; ++j) {
                 // read neighbor weight
                 memcpy(&n_weight, pos, sizeof(float));
                 pos += sizeof(float);
-                nbrWeight[j] = n_weight;
+                if (nbr_flag[j] && fid_dict.find(n_id) != fid_dict.end()) {
+                    nbrWeight.push_back(n_weight);
+                }
             }
             gl->setNbrWeights(nbrWeight);
         }
 
-        this->w_dict[fid] = gl;
+        this->w_dict[ fid_dict[fid] ] = gl;
+        this->fids.push_back(fid_dict[fid]);
     }
+
     this->num_obs = N;
     this->GetNbrStats();
 

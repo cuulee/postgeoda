@@ -18,11 +18,6 @@ extern "C" {
 #include <pgtypes_numeric.h>
 #include <windowapi.h>
 
-typedef struct {
-    float lisa;
-    float pvalue;
-    int category;
-} lisa_result;
 
 /**
  * lisa_context
@@ -32,8 +27,7 @@ typedef struct {
 typedef struct {
     bool	isdone;
     bool	isnull;
-    Point  **result;
-    //Datum  **output;
+    double   **result;
     /* variable length */
 } lisa_context;
 
@@ -48,11 +42,10 @@ static inline void check_if_numeric_type(Oid  valsType)
     if (valsType != INT2OID &&
         valsType != INT4OID &&
         valsType != INT8OID &&
-        valsType != NUMERICOID &&
         valsType != FLOAT4OID &&
         valsType != FLOAT8OID) {
-        ereport(ERROR, (errmsg("first parameter of LISA function must be SMALLINT, INTEGER, BIGINT, REAL, or DOUBLE "
-                               "PRECISION values")));
+        ereport(ERROR, (errmsg("The first input argument of LISA function should be values of SMALLINT, INTEGER, "
+                               "BIGINT, REAL, or DOUBLE PRECISION")));
     }
 }
 

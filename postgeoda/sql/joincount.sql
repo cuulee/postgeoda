@@ -2,35 +2,45 @@
 -- Author: Xun Li <lixun910@gmail.com>-
 -- Date: 2021-4-27
 -- Changes:
--- 2021-4-27 add local_joincount()
+-- 2021-4-27 add local_joincount(), add local_bijoincount(), local_multijoincount()
+-- 2021-4-28 add full version of the 3 query functions
 --------------------------------------
 
 --------------------------------------
--- local_joincount_b(ogc_fidcrm_prs, bytea)
--- the weights should be passed as a whole in BYTEA format
--- (This function will be depcreciated)
+-- local_joincount(crm_prs, bytea)
 --------------------------------------
-CREATE OR REPLACE FUNCTION geoda_localjoincount_b(integer, anyelement, bytea)
-    RETURNS point
-AS 'MODULE_PATHNAME', 'local_joincount_window_bytea'
+CREATE OR REPLACE FUNCTION local_joincount(anyelement, bytea)
+    RETURNS float8[]
+AS 'MODULE_PATHNAME', 'pg_local_joincount_window'
+    LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
+
+CREATE OR REPLACE FUNCTION local_joincount(anyelement, bytea, integer, character varying, numeric, integer, integer)
+    RETURNS float8[]
+AS 'MODULE_PATHNAME', 'pg_local_joincount_window'
     LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
 
 --------------------------------------
--- local_bijoincount_b(ogc_fid, crm_prs, litercy, bytea)
--- the weights should be passed as a whole in BYTEA format
--- (This function will be depcreciated)
+-- local_bijoincount(crm_prs, litercy, bytea)
 --------------------------------------
-CREATE OR REPLACE FUNCTION geoda_blocaljoincount_b(integer, anyelement, anyelement, bytea)
-    RETURNS point
-AS 'MODULE_PATHNAME', 'local_bjoincount_window_bytea'
+CREATE OR REPLACE FUNCTION local_bijoincount(anyelement, anyelement, bytea)
+    RETURNS float8[]
+AS 'MODULE_PATHNAME', 'pg_local_bijoincount_window'
+    LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
+
+CREATE OR REPLACE FUNCTION local_bijoincount(anyelement, anyelement, bytea, integer, character varying, numeric, integer, integer)
+    RETURNS float8[]
+AS 'MODULE_PATHNAME', 'pg_local_bijoincount_window'
     LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
 
 --------------------------------------
--- local_multijoincount_b(ogc_fid, ARRAY["Crm_prs", "Crm_prp"], bytea)
--- the weights should be passed as a whole in BYTEA format
--- (This function will be depcreciated)
+-- local_multijoincount(ARRAY["Crm_prs", "Crm_prp"], bytea)
 --------------------------------------
-CREATE OR REPLACE FUNCTION geoda_mlocaljoincount_b(integer, anyarray, bytea)
-    RETURNS point
-AS 'MODULE_PATHNAME', 'local_mjoincount_window_bytea'
+CREATE OR REPLACE FUNCTION local_multijoincount(anyarray, bytea)
+    RETURNS float8[]
+AS 'MODULE_PATHNAME', 'pg_local_multijoincount_window'
+    LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
+
+CREATE OR REPLACE FUNCTION local_multijoincount(anyarray, bytea, integer, character varying, numeric, integer, integer)
+    RETURNS float8[]
+AS 'MODULE_PATHNAME', 'pg_local_multijoincount_window'
     LANGUAGE 'c' IMMUTABLE STRICT WINDOW;

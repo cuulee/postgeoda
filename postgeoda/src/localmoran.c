@@ -88,7 +88,7 @@ Datum pg_local_moran_window(PG_FUNCTION_ARGS) {
 
         read_lisa_arguments(arg_index, PG_NARGS(), winobj, &args);
 
-        Point **result = local_moran_window(N, r, (const uint8_t**)w, w_size, args.permutations, args.method,
+        double **result = local_moran_window(N, r, (const uint8_t**)w, w_size, args.permutations, args.method,
                                             args.significance_cutoff, args.cpu_threads, args.seed);
 
         // Safe the result
@@ -110,11 +110,12 @@ Datum pg_local_moran_window(PG_FUNCTION_ARGS) {
     curpos = WinGetCurrentPosition(winobj);
 
     // Wrap the results in a new PostgreSQL array object.
-    Point *p = context->result[curpos];
-    Datum elems[2];
-    elems[0] = Float8GetDatum(p->x); // double to Datum
-    elems[1] = Float8GetDatum(p->y);
-    int nelems = 2;
+    double *p = context->result[curpos];
+    Datum elems[3];
+    elems[0] = Float8GetDatum(p[0]); // double to Datum
+    elems[1] = Float8GetDatum(p[1]);
+    elems[2] = Float8GetDatum(p[2]);
+    int nelems = 3;
     Oid elmtype = FLOAT8OID;
     int16 elmlen;
     bool elmbyval;
@@ -274,7 +275,7 @@ Datum pg_local_moran_window_bytea(PG_FUNCTION_ARGS) {
         }
 
         // compute lisa
-        Point **result = pg_local_moran(N, fids, r, w);
+        double **result = local_moran_window_bytea(N, fids, r, w);
 
         // Safe the result
         context->result = result;

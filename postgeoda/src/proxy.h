@@ -16,8 +16,6 @@ extern "C" {
 #include <utils/lsyscache.h> /* for get_typlenbyvalalign */
 #include <utils/geo_decls.h> /* for Point */
 
-#include "lisa.h"
-
 // Structure to exchange weights data between PG and libgeoda
 
 /**
@@ -179,7 +177,7 @@ typedef struct PGLISA
 void free_pglisa(PGLISA *lisa);
 
 /**
- * pg_local_moran()
+ * local_moran_window_bytea()
  *
  * The local moran function used for Window SQL function local_moran_b(), which needs
  * to take the spatial weights as a whole as an input parameter.
@@ -189,9 +187,9 @@ void free_pglisa(PGLISA *lisa);
  * @param fids
  * @param r
  * @param bw
- * @return  Point** NOTE: Point is used to store (indicator, pvalue) as a pair returned for each row
+ * @return  double**
  */
-Point** pg_local_moran(int N, const int64* fids, const double* r, const uint8_t* bw);
+double** local_moran_window_bytea(int N, const int64* fids, const double* r, const uint8_t* bw);
 
 /**
  * local_moran_window()
@@ -201,9 +199,9 @@ Point** pg_local_moran(int N, const int64* fids, const double* r, const uint8_t*
  * @param r
  * @param bw
  * @param w_size
- * @return
+ * @return double**
  */
-Point** local_moran_window(int N, const double* r, const uint8_t** bw, const size_t* w_size, int permutations,
+double** local_moran_window(int N, const double* r, const uint8_t** bw, const size_t* w_size, int permutations,
                            char *method, double significance_cutoff, int cpu_threads, int seed);
 
 /**
@@ -224,60 +222,55 @@ Point* local_moran_fast(double val, const uint8_t* bw, size_t bw_size, int num_o
                            int permutations, int rnd_seed);
 
 
-/**
- * bridging PG to libgeoda::local_joincount
- * @param N
- * @param fids
- * @param r
- * @param bw
- * @return
- */
-Point** pg_local_joincount(int N, const int64* fids, const double* r, const uint8_t* bw);
+double** local_joincount_window(int N, const double* r, const uint8_t** bw, const size_t* w_size, int permutations,
+                                char *method, double significance_cutoff, int cpu_threads, int seed);
 
-/**
- * briding PG to libgeoda::local_bijoincount
- * @param N
- * @param fids
- * @param r1
- * @param r2
- * @param bw
- * @return
- */
-Point** pg_bivariate_local_joincount(int N, const int64* fids, const double* r1, const double* r2, const uint8_t* bw);
+double** local_bijoincount_window(int N, const double* r1, const double* r2, const uint8_t** bw, const size_t* w_size,
+                                  int permutations, char *method, double significance_cutoff, int cpu_threads,
+                                  int seed);
 
+double** local_multijoincount_window(int N, int n_vars, const double** r, const uint8_t** bw, const size_t* w_size,
+                                     int permutations, char *method, double significance_cutoff, int cpu_threads,
+                                     int seed);
 /**
- * bridging PG to libgeoda::local_g
- * @param N
- * @param fids
- * @param r
- * @param bw
- * @return
- */
-Point** pg_local_g(int N, const int64* fids, const double* r, const uint8_t* bw);
-
-/**
- * bridging PG to libgeoda::local_start
  *
  * @param N
- * @param fids
  * @param r
  * @param bw
+ * @param w_size
+ * @param permutations
+ * @param method
+ * @param significance_cutoff
+ * @param cpu_threads
+ * @param seed
  * @return
  */
-Point** pg_local_gstar(int N, const int64* fids, const double* r, const uint8_t* bw);
+double** local_g_window(int N, const double* r, const uint8_t** bw, const size_t* w_size, int permutations,
+                        char *method, double significance_cutoff, int cpu_threads, int seed);
 
 /**
- * briding PG to libgeoda::gda_quantilelisa()
  *
- * @param k
- * @param quantile
- * @param N the number of objects
- * @param fids the feature_id (fids) of query objects
- * @param r real values
- * @param bw Binary weights
+ * @param N
+ * @param r
+ * @param bw
+ * @param w_size
+ * @param permutations
+ * @param method
+ * @param significance_cutoff
+ * @param cpu_threads
+ * @param seed
  * @return
  */
-Point** pg_quantilelisa(int k, int quantile, int N, const double* r, const uint8_t** bw, const size_t* w_size);
+double** local_gstar_window(int N, const double* r, const uint8_t** bw, const size_t* w_size, int permutations,
+                            char *method, double significance_cutoff, int cpu_threads, int seed);
+
+double** local_quantilelisa_window(int k, int quantile, int N, const double* r, const uint8_t** bw,
+                                   const size_t* w_size, int permutations, char *method, double significance_cutoff,
+                                   int cpu_threads, int seed);
+
+double** local_multiquantilelisa_window(int n_vars, int* k, int* quantile, int N, const double** r, const uint8_t** bw,
+                                        const size_t* w_size, int permutations, char *method,
+                                        double significance_cutoff, int cpu_threads, int seed);
 
 #ifdef __cplusplus
 }

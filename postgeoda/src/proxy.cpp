@@ -20,6 +20,7 @@
 #include "binweight.h"
 #include "postgeoda.h"
 #include "proxy.h"
+#include "lisa.h"
 
 void free_pgneighbor(PGNeighbor *neighbor, char w_type)
 {
@@ -273,93 +274,55 @@ PGLISA* wrapper_result(int N, LISA* lisa)
     return pg_lisa;
 }
 
-Point** pg_local_moran(int N, const int64* fids, const double* r, const uint8_t* bw)
-{
-    BinWeight* w = new BinWeight(bw); // complete weights
-    int64 num_obs  = w->num_obs;
-
-    // NOTE: num_obs could be larger than N
-    // input values could be a subset of total values
-    std::vector<double> data(num_obs +1 , 0);
-    std::vector<bool> undefs(num_obs +1, true);
-
-    for (size_t i=0; i<N; ++i) {
-        size_t fid = fids[i];
-        if (fid > num_obs) {
-           lwerror("pg_local_moran: fid not match in weights. fid > w.num_obs %d", fids[i]) ;
-        }
-        data[fid] = r[i];
-        undefs[fid] = false;
-        //lwdebug(1, "pg_local_moran: data[%d] = %f, nn=%d", fid, data[fid], w->GetNbrSize(fid));
-    }
-
-    lwdebug(1, "pg_local_moran: gda_localmoran()");
-    double significance_cutoff = 0.05;
-    int nCPUs = 8, permutations = 999, last_seed_used = 123456789;
-    std::string perm_method = "complete";
-    LISA* lisa = gda_localmoran(w, data, undefs, significance_cutoff, nCPUs, permutations, perm_method, last_seed_used);
-    const std::vector<double>& lisa_i = lisa->GetLISAValues();
-    const std::vector<double>& lisa_p = lisa->GetLocalSignificanceValues();
-
-    // results
-    Point **result = (Point **) palloc(sizeof(Point*) * N);
-    for (size_t i = 0; i < N; i++) {
-        result[i] = (Point *) palloc(sizeof(Point));
-        result[i]->x = lisa_i[ fids[i] ];
-        result[i]->y = lisa_p[ fids[i] ];
-    }
-
-    // clean
-    delete lisa;
-    lwdebug(1, "Exit pg_local_moran.");
-    return result;
-}
 
 
-Point** local_moran_window(int N, const double* r, const uint8_t** bw, const size_t* w_size, int permutations,
+double** local_moran_window(int N, const double* r, const uint8_t** bw, const size_t* w_size, int permutations,
                            char *method, double significance_cutoff, int cpu_threads, int seed)
 {
     BinWeight* w = new BinWeight(N, bw, w_size);
-    int num_obs = w->num_obs;
-    const std::vector<uint32_t>& fids = w->getFids();
+    int num_obs = w->num_obs; // number of observations in weights in the query Window, == N
+    const std::vector<uint32_t>& fids = w->getFids(); // fids starts from 0
 
-    // check if w matches input fids
-
-    std::vector<double> data(num_obs+1, 0); // fid starts from 0, which will be ignored
-    std::vector<bool> undefs(num_obs+1, true);
-
-    for (size_t i=0; i<N; ++i) {
-        size_t fid = fids[i];
-        if (fid > num_obs)
-            lwerror("pg_local_moran_warray: %d-th fid = %d.", i, fid);
-        data[fid] = r[i];
-        undefs[fid] = false;
+    for (int i=0; i<fids.size(); ++i) {
+        lwdebug(1, "local_moran_window: fid=%d", fids[i]);
     }
 
-    for (size_t i=0; i<N; ++i) {
-        lwdebug(2, "pg_local_moran_warray: data[%d] = %f.", i, data[i]);
+    // construct data for observations that may or may NOT be in the Window
+    // for those not in the Window, they will be treated as undefined/null
+    std::vector<double> data(num_obs, 0);
+    std::vector<bool> undefs(num_obs, true);
+
+    for (int i=0; i<N; ++i) {
+        data[i] = r[i];
+        undefs[i] = false;
     }
 
-    lwdebug(1, "pg_local_moran_warray: gda_localmoran().");
+    for (int i=0; i<N; ++i) {
+        lwdebug(4, "local_joincount_window: data[%d] = %f.", i, data[i]);
+    }
+
+    lwdebug(1, "local_moran_window: gda_localmoran().");
     std::string perm_method = "lookup";
     if (method != 0) perm_method = method;
 
     LISA* lisa = gda_localmoran(w, data, undefs, significance_cutoff, cpu_threads, permutations, perm_method, seed);
     const std::vector<double>& lisa_i = lisa->GetLISAValues();
     const std::vector<double>& lisa_p = lisa->GetLocalSignificanceValues();
+    const std::vector<int>& lisa_c = lisa->GetClusterIndicators();
 
     // results
-    Point **result = (Point **) palloc(sizeof(Point*) * N);
-    for (size_t i = 0; i < N; i++) {
-        result[i] = (Point *) palloc(sizeof(Point));
-        result[i]->x = lisa_i[ fids[i] ];
-        result[i]->y = lisa_p[ fids[i] ];
+    double **result = (double **) palloc(sizeof(double*) * N);
+    for (int i = 0; i < N; i++) {
+        result[i] = (double *) palloc(sizeof(double) * 3);
+        result[i][0] = lisa_i[i];
+        result[i][1] = lisa_p[i];
+        result[i][2] = lisa_c[i];
     }
 
     // clean
     delete lisa;
 
-    lwdebug(1, "pg_local_moran_warray: return results.");
+    lwdebug(1, "local_moran_window: return results.");
     return result;
 }
 
@@ -482,4 +445,46 @@ Point* local_moran_fast(double val, const uint8_t* bw, size_t bw_size, int num_o
     r->x = lisa_i;
     r->y = lisa_p;
     return r;
+}
+
+double** local_moran_window_bytea(int N, const int64* fids, const double* r, const uint8_t* bw)
+{
+    BinWeight* w = new BinWeight(bw); // complete weights
+    int64 num_obs  = w->num_obs;
+
+    // NOTE: num_obs could be larger than N
+    // input values could be a subset of total values
+    std::vector<double> data(num_obs +1 , 0);
+    std::vector<bool> undefs(num_obs +1, true);
+
+    for (size_t i=0; i<N; ++i) {
+        size_t fid = fids[i];
+        if (fid > num_obs) {
+            lwerror("pg_local_moran: fid not match in weights. fid > w.num_obs %d", fids[i]) ;
+        }
+        data[fid] = r[i];
+        undefs[fid] = false;
+        //lwdebug(1, "pg_local_moran: data[%d] = %f, nn=%d", fid, data[fid], w->GetNbrSize(fid));
+    }
+
+    lwdebug(1, "pg_local_moran: gda_localmoran()");
+    double significance_cutoff = 0.05;
+    int nCPUs = 8, permutations = 999, last_seed_used = 123456789;
+    std::string perm_method = "complete";
+    LISA* lisa = gda_localmoran(w, data, undefs, significance_cutoff, nCPUs, permutations, perm_method, last_seed_used);
+    const std::vector<double>& lisa_i = lisa->GetLISAValues();
+    const std::vector<double>& lisa_p = lisa->GetLocalSignificanceValues();
+
+    // results
+    double **result = (double **) palloc(sizeof(double*) * N);
+    for (size_t i = 0; i < N; i++) {
+        result[i] = (double*) palloc(sizeof(double) * 2);
+        result[i][0] = lisa_i[ fids[i] ];
+        result[i][1] = lisa_p[ fids[i] ];
+    }
+
+    // clean
+    delete lisa;
+    lwdebug(1, "Exit pg_local_moran.");
+    return result;
 }
