@@ -278,7 +278,15 @@ double** neighbor_match_test_window(List *lfids, List *lwgeoms, int k, int n_var
                                     double power, bool is_inverse, bool is_arc, bool is_mile,
                                     const char *scale_method, const char* dist_type);
 
-double* pg_hinge15_aggregate(List *data, int *n_breaks);
+double* pg_hinge_aggregate(List *data, List *undefs, bool is_hinge15);
+
+double* pg_percentile_aggregate(List *data, List *undefs, int *n_breaks);
+
+double* pg_stddev_aggregate(List *data, List *undefs, int *n_breaks);
+
+double* pg_quantile_aggregate(List *data, List *undefs, int k);
+
+double* pg_naturalbreaks_aggregate(List *data, List *undefs, int k);
 
 #ifdef __cplusplus
 }

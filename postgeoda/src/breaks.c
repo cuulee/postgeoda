@@ -35,6 +35,7 @@ typedef struct CollectVariableState
 {
     List *data;  /* collected values */
     List *undefs;
+    int k; //optional
 } CollectVariableState;
 
 /**
@@ -70,6 +71,8 @@ Datum variable_transfn(PG_FUNCTION_ARGS) {
         // first incoming row/item
         state = (CollectVariableState*)MemoryContextAlloc(aggcontext, sizeof(CollectVariableState));
         state->data = NULL;
+        state->undefs = NULL;
+        state->k = 4;
         //MemoryContextSwitchTo(old);
     } else {
         state = (CollectVariableState*) PG_GETARG_POINTER(0);
@@ -92,6 +95,11 @@ Datum variable_transfn(PG_FUNCTION_ARGS) {
         //lwdebug(1,"variable_transfn: NULL value");
     }
 
+    // k (optional)
+    if (!PG_ARGISNULL(2)) {
+        state->k = PG_GETARG_INT64(2);
+    }
+
     /* Initialize or append to list as necessary */
     if (state->data) {
         lwdebug(4, "lappend val.");
@@ -110,7 +118,6 @@ Datum variable_transfn(PG_FUNCTION_ARGS) {
 
 Datum hinge15_finalfn(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(hinge15_finalfn);
-
 Datum hinge15_finalfn(PG_FUNCTION_ARGS)
 {
     CollectVariableState *p;
@@ -124,9 +131,49 @@ Datum hinge15_finalfn(PG_FUNCTION_ARGS)
     // get State from aggregate internal function
     p = (CollectVariableState*) PG_GETARG_POINTER(0);
 
+    int nelems = 5;
+    double *breaks = pg_hinge_aggregate(p->data, p->undefs, true);
+
+    lwdebug(1,"Prepare the PgSQL text return typ.");
+    /* Prepare the PgSQL text return type */
+    Datum elems[nelems];
+    for (int i=0; i<nelems; ++i) {
+        elems[i] = Float8GetDatum(breaks[i]);
+    }
+
+    /* Clean up and return */
+    pfree(breaks);
+
+    Oid elmtype = FLOAT8OID;
+    int16 elmlen;
+    bool elmbyval;
+    char elmalign;
+    get_typlenbyvalalign(elmtype, &elmlen, &elmbyval, &elmalign);
+    ArrayType *array = construct_array(elems, nelems, elmtype, elmlen, elmbyval, elmalign);
+
+    lwdebug(1,"Exit hinge15_finalfn.");
+    PG_RETURN_ARRAYTYPE_P(array);
+}
+
+
+Datum hinge30_finalfn(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(hinge30_finalfn);
+Datum hinge30_finalfn(PG_FUNCTION_ARGS)
+{
+    CollectVariableState *p;
+
+    lwdebug(1,"Enter hinge30_finalfn.");
+
+    if (PG_ARGISNULL(0)) {
+        PG_RETURN_NULL();   /* returns null iff no input values */
+    }
+
+    // get State from aggregate internal function
+    p = (CollectVariableState*) PG_GETARG_POINTER(0);
+
     List *data = p->data;
-    int nelems = 0;
-    double *breaks = pg_hinge15_aggregate(data, p->undefs, &nelems);
+    int nelems = 5;
+    double *breaks = pg_hinge_aggregate(data, p->undefs, false);
 
     lwdebug(1,"Prepare the PgSQL text return typ.");
     /* Prepare the PgSQL text return type */
@@ -145,7 +192,169 @@ Datum hinge15_finalfn(PG_FUNCTION_ARGS)
     get_typlenbyvalalign(elmtype, &elmlen, &elmbyval, &elmalign);
     ArrayType *array = construct_array(elems, nelems, elmtype, elmlen, elmbyval, elmalign);
 
-    lwdebug(1,"Exit hinge15_finalfn.");
+    lwdebug(1,"Exit hinge30_finalfn.");
+    PG_RETURN_ARRAYTYPE_P(array);
+}
+
+Datum percentile_finalfn(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(percentile_finalfn);
+Datum percentile_finalfn(PG_FUNCTION_ARGS)
+{
+    CollectVariableState *p;
+
+    lwdebug(1,"Enter percentile_finalfn.");
+
+    if (PG_ARGISNULL(0)) {
+        PG_RETURN_NULL();   /* returns null iff no input values */
+    }
+
+    // get State from aggregate internal function
+    p = (CollectVariableState*) PG_GETARG_POINTER(0);
+
+    List *data = p->data;
+    int nelems = 0;
+    double *breaks = pg_percentile_aggregate(data, p->undefs, &nelems);
+
+    lwdebug(1,"Prepare the PgSQL text return typ.");
+    /* Prepare the PgSQL text return type */
+    Datum elems[nelems];
+    for (int i=0; i<nelems; ++i) {
+        elems[i] = Float8GetDatum(breaks[i]);
+    }
+
+    /* Clean up and return */
+    lwfree(breaks);
+
+    Oid elmtype = FLOAT8OID;
+    int16 elmlen;
+    bool elmbyval;
+    char elmalign;
+    get_typlenbyvalalign(elmtype, &elmlen, &elmbyval, &elmalign);
+    ArrayType *array = construct_array(elems, nelems, elmtype, elmlen, elmbyval, elmalign);
+
+    lwdebug(1,"Exit percentile_finalfn.");
+    PG_RETURN_ARRAYTYPE_P(array);
+}
+
+
+Datum stddev_finalfn(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(stddev_finalfn);
+Datum stddev_finalfn(PG_FUNCTION_ARGS)
+{
+    CollectVariableState *p;
+
+    lwdebug(1,"Enter stddev_finalfn.");
+
+    if (PG_ARGISNULL(0)) {
+        PG_RETURN_NULL();   /* returns null iff no input values */
+    }
+
+    // get State from aggregate internal function
+    p = (CollectVariableState*) PG_GETARG_POINTER(0);
+
+    List *data = p->data;
+    int nelems = 0;
+    double *breaks = pg_stddev_aggregate(data, p->undefs, &nelems);
+
+    lwdebug(1,"Prepare the PgSQL text return typ.");
+    /* Prepare the PgSQL text return type */
+    Datum elems[nelems];
+    for (int i=0; i<nelems; ++i) {
+        elems[i] = Float8GetDatum(breaks[i]);
+    }
+
+    /* Clean up and return */
+    lwfree(breaks);
+
+    Oid elmtype = FLOAT8OID;
+    int16 elmlen;
+    bool elmbyval;
+    char elmalign;
+    get_typlenbyvalalign(elmtype, &elmlen, &elmbyval, &elmalign);
+    ArrayType *array = construct_array(elems, nelems, elmtype, elmlen, elmbyval, elmalign);
+
+    lwdebug(1,"Exit stddev_finalfn.");
+    PG_RETURN_ARRAYTYPE_P(array);
+}
+
+
+Datum quantile_finalfn(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(quantile_finalfn);
+Datum quantile_finalfn(PG_FUNCTION_ARGS)
+{
+    CollectVariableState *p;
+
+    lwdebug(1,"Enter quantile_finalfn.");
+
+    if (PG_ARGISNULL(0)) {
+        PG_RETURN_NULL();   /* returns null iff no input values */
+    }
+
+    // get State from aggregate internal function
+    p = (CollectVariableState*) PG_GETARG_POINTER(0);
+
+    List *data = p->data;
+    int nelems = p->k - 1;
+    double *breaks = pg_quantile_aggregate(data, p->undefs, p->k);
+
+    lwdebug(1,"Prepare the PgSQL text return typ.");
+    /* Prepare the PgSQL text return type */
+    Datum elems[nelems];
+    for (int i=0; i<nelems; ++i) {
+        elems[i] = Float8GetDatum(breaks[i]);
+    }
+
+    /* Clean up and return */
+    lwfree(breaks);
+
+    Oid elmtype = FLOAT8OID;
+    int16 elmlen;
+    bool elmbyval;
+    char elmalign;
+    get_typlenbyvalalign(elmtype, &elmlen, &elmbyval, &elmalign);
+    ArrayType *array = construct_array(elems, nelems, elmtype, elmlen, elmbyval, elmalign);
+
+    lwdebug(1,"Exit quantile_finalfn.");
+    PG_RETURN_ARRAYTYPE_P(array);
+}
+
+Datum naturalbreaks_finalfn(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(naturalbreaks_finalfn);
+Datum naturalbreaks_finalfn(PG_FUNCTION_ARGS)
+{
+    CollectVariableState *p;
+
+    lwdebug(1,"Enter naturalbreaks_finalfn.");
+
+    if (PG_ARGISNULL(0)) {
+        PG_RETURN_NULL();   /* returns null iff no input values */
+    }
+
+    // get State from aggregate internal function
+    p = (CollectVariableState*) PG_GETARG_POINTER(0);
+
+    List *data = p->data;
+    int nelems = p->k - 1;
+    double *breaks = pg_naturalbreaks_aggregate(data, p->undefs, p->k);
+
+    lwdebug(1,"Prepare the PgSQL text return typ.");
+    /* Prepare the PgSQL text return type */
+    Datum elems[nelems];
+    for (int i=0; i<nelems; ++i) {
+        elems[i] = Float8GetDatum(breaks[i]);
+    }
+
+    /* Clean up and return */
+    lwfree(breaks);
+
+    Oid elmtype = FLOAT8OID;
+    int16 elmlen;
+    bool elmbyval;
+    char elmalign;
+    get_typlenbyvalalign(elmtype, &elmlen, &elmbyval, &elmalign);
+    ArrayType *array = construct_array(elems, nelems, elmtype, elmlen, elmbyval, elmalign);
+
+    lwdebug(1,"Exit naturalbreaks_finalfn.");
     PG_RETURN_ARRAYTYPE_P(array);
 }
 #ifdef __cplusplus

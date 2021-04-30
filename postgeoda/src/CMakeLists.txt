@@ -51,6 +51,7 @@ set(SOURCES
         proxy_joincount.cpp
         proxy_localg.cpp
         proxy_quantilelisa.cpp
+        proxy_breaks.cpp
         )
 
 # Add test source code in Debug builds

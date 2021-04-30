@@ -166,46 +166,14 @@ PGWeight* create_distance_weights(List *lfids, List *lwgeoms, double threshold, 
 
 PGWeight* create_kernel_weights(List *lfids, List *lwgeoms, double bandwidth, double power,
                                 bool is_inverse, bool is_arc, bool is_mile, const char* kernel,
-                                bool use_kernel_diagonal)
-{
-    lwdebug(1,"Enter create_kernel_weights.");
-    PostGeoDa* geoda = build_pg_geoda(lfids, lwgeoms);
+                                bool use_kernel_diagonal) {
+    lwdebug(1, "Enter create_kernel_weights.");
+    PostGeoDa *geoda = build_pg_geoda(lfids, lwgeoms);
     PGWeight *w = geoda->CreateDistanceWeights(bandwidth, power, is_inverse, is_arc, is_mile, kernel,
                                                use_kernel_diagonal);
     delete geoda;
-    lwdebug(1,"Exit create_kernel_weights.");
+    lwdebug(1, "Exit create_kernel_weights.");
     return w;
-}
-
-double* pg_hinge15_aggregate(List *data, List *undefs, int* n_breaks)
-{
-    ListCell *l;
-    size_t nelems = list_length(data);
-
-    std::vector<double> values(nelems, 0);
-    std::vector<bool> value_undefs(nelems, false);
-    int i = 0;
-    foreach(l, data) {
-        double* val = (double*) (lfirst(l));
-        values[i++] = val[0];
-        lwfree(val);
-    }
-    foreach(l, undefs) {
-        bool* undef = (bool*) (lfirst(l));
-        value_undefs[i++] = undef[0];
-        lwfree(undef);
-    }
-
-    std::vector<double> breaks = gda_hinge15breaks(values, value_undefs);
-    int n = (int)breaks.size();
-    double *result = (double*)lwalloc(sizeof(double) * n);
-
-    for (int i=0; i< n; ++i) {
-        result[i] = breaks[i];
-    }
-
-    *n_breaks  = n;
-    return result;
 }
 
 void free_pglisa(PGLISA *lisa)
