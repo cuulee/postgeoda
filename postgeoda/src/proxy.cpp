@@ -6,6 +6,7 @@
  * 2021-4-23 Update create_knn_weights(); add create_kernel_weights();
  * add create_kernel_knn_weights();
  * 2021-4-28 add neighbor_match_test_window()
+ * 2021-4-29 add pg_hinge15_aggregate()
  */
 
 #include <vector>
@@ -18,6 +19,7 @@
 #include <libgeoda/GenUtils.h>
 #include <libgeoda/pg/geoms.h>
 #include <libgeoda/pg/utils.h>
+#include <libgeoda/gda_data.h>
 
 #include "binweight.h"
 #include "postgeoda.h"
@@ -173,6 +175,32 @@ PGWeight* create_kernel_weights(List *lfids, List *lwgeoms, double bandwidth, do
     delete geoda;
     lwdebug(1,"Exit create_kernel_weights.");
     return w;
+}
+
+double* pg_hinge15_aggregate(List *data, int* n_breaks)
+{
+    ListCell *l;
+    size_t nelems = list_length(data);
+
+    std::vector<double> values(nelems, 0);
+    std::vector<bool> undefs(nelems, false);
+    int i = 0;
+    foreach(l, data) {
+        double* val = (double*) (lfirst(l));
+        values[i++] = val[0];
+        lwfree(val);
+    }
+
+    std::vector<double> breaks = gda_hinge15breaks(values, undefs);
+    int n = (int)breaks.size();
+    double *result = (double*)lwalloc(sizeof(double) * n);
+
+    for (int i=0; i< n; ++i) {
+        result[i] = breaks[i];
+    }
+
+    *n_breaks  = n;
+    return result;
 }
 
 void free_pglisa(PGLISA *lisa)

@@ -278,6 +278,8 @@ double** neighbor_match_test_window(List *lfids, List *lwgeoms, int k, int n_var
                                     double power, bool is_inverse, bool is_arc, bool is_mile,
                                     const char *scale_method, const char* dist_type);
 
+double* pg_hinge15_aggregate(List *data, int *n_breaks);
+
 #ifdef __cplusplus
 }
 #endif

@@ -10,6 +10,7 @@ set(SOURCE_FILES
         g.sql
         joincount.sql
         quantilelisa.sql
+        breaks.sql
         )
 
 set(MODULE_PATHNAME "$libdir/postgeoda-${PROJECT_VERSION_MOD}")

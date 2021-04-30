@@ -81,7 +81,7 @@ static inline double get_numeric_val(Oid valsType, Datum arg)
             val = DatumGetFloat8(arg);
             break;
         default:
-            ereport(ERROR, (errmsg("LISA input values must be SMALLINT, INTEGER, BIGINT, REAL, or DOUBLE PRECISION values")));
+            ereport(ERROR, (errmsg("input values must be SMALLINT, INTEGER, BIGINT, REAL, or DOUBLE PRECISION")));
             break;
     }
     return val;

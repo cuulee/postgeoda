@@ -36,6 +36,7 @@ set(SOURCES
         ../../libgeoda/knn/kd_tree.cpp
         ../../libgeoda/knn/kd_util.cpp
         ../../libgeoda/knn/perf.cpp
+        breaks.c
         weights_cont.c
         weights_knn.c
         weights_dist.c
