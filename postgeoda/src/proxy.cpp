@@ -177,21 +177,26 @@ PGWeight* create_kernel_weights(List *lfids, List *lwgeoms, double bandwidth, do
     return w;
 }
 
-double* pg_hinge15_aggregate(List *data, int* n_breaks)
+double* pg_hinge15_aggregate(List *data, List *undefs, int* n_breaks)
 {
     ListCell *l;
     size_t nelems = list_length(data);
 
     std::vector<double> values(nelems, 0);
-    std::vector<bool> undefs(nelems, false);
+    std::vector<bool> value_undefs(nelems, false);
     int i = 0;
     foreach(l, data) {
         double* val = (double*) (lfirst(l));
         values[i++] = val[0];
         lwfree(val);
     }
+    foreach(l, undefs) {
+        bool* undef = (bool*) (lfirst(l));
+        value_undefs[i++] = undef[0];
+        lwfree(undef);
+    }
 
-    std::vector<double> breaks = gda_hinge15breaks(values, undefs);
+    std::vector<double> breaks = gda_hinge15breaks(values, value_undefs);
     int n = (int)breaks.size();
     double *result = (double*)lwalloc(sizeof(double) * n);
 

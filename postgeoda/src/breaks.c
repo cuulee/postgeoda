@@ -34,6 +34,7 @@ PG_MODULE_MAGIC;
 typedef struct CollectVariableState
 {
     List *data;  /* collected values */
+    List *undefs;
 } CollectVariableState;
 
 /**
@@ -75,24 +76,31 @@ Datum variable_transfn(PG_FUNCTION_ARGS) {
     }
 
     double *val = (double*)lwalloc(sizeof(double));
+    bool *undef= (bool*)lwalloc(sizeof(bool));
+
     /* Take a copy of the geometry into the aggregate context */
     MemoryContext old = MemoryContextSwitchTo(aggcontext);
 
     // values
     if (!PG_ARGISNULL(1)) {
         val[0] = get_numeric_val(argType, PG_GETARG_DATUM(1));
+        undef[0] = false;
         //lwdebug(1,"variable_transfn: value: %f", val[0]);
     } else {
-        lwdebug(1,"variable_transfn: NULL value");
+        val[0] = 0;
+        undef[0] = true;
+        //lwdebug(1,"variable_transfn: NULL value");
     }
 
     /* Initialize or append to list as necessary */
     if (state->data) {
         lwdebug(4, "lappend val.");
         state->data = lappend(state->data, val);
+        state->undefs = lappend(state->undefs, undef);
     } else {
         lwdebug(4, "list_make.");
         state->data = list_make1(val);
+        state->undefs = list_make1(undef);
     }
 
     MemoryContextSwitchTo(old);
@@ -118,7 +126,7 @@ Datum hinge15_finalfn(PG_FUNCTION_ARGS)
 
     List *data = p->data;
     int nelems = 0;
-    double *breaks = pg_hinge15_aggregate(data, &nelems);
+    double *breaks = pg_hinge15_aggregate(data, p->undefs, &nelems);
 
     lwdebug(1,"Prepare the PgSQL text return typ.");
     /* Prepare the PgSQL text return type */
