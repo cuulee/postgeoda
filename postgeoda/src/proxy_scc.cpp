@@ -28,6 +28,11 @@ int* skater1_window(int k, int N, int n_vars, const double** r, const uint8_t** 
     BinWeight* w = new BinWeight(N, bw, w_size);
     int num_obs = w->num_obs;
 
+    if (w->CheckConnectivity() == false) {
+        lwdebug(1, "skater_window: check connectivity failed.");
+        delete w;
+        return 0;
+    }
     std::vector<std::vector<double> > data_arr;
     std::vector<std::vector<bool> > undefs_arr;
 

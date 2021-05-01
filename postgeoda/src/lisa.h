@@ -51,8 +51,9 @@ static inline void check_if_numeric_type(Oid  valsType)
         valsType != INT4OID &&
         valsType != INT8OID &&
         valsType != FLOAT4OID &&
+        valsType != FLOAT4OID &&
         valsType != FLOAT8OID) {
-        ereport(ERROR, (errmsg("The first input argument of LISA function should be values of SMALLINT, INTEGER, "
+        ereport(ERROR, (errmsg("The input variable should be values of SMALLINT, INTEGER, "
                                "BIGINT, REAL, or DOUBLE PRECISION")));
     }
 }

@@ -440,3 +440,5 @@ FALSE, FALSE, FALSE, 'standardize', 'euclidean') OVER() FROM sdoh;
 --SELECT stddev_breaks(ep_pov::real) FROM sdoh;
 --SELECT quantile_breaks(ep_pov::real, 5) FROM sdoh;
 
+SELECT skater(5, ARRAY[ep_pov::real, ep_unem::real], queen_w) OVER() FROM sdoh;
+

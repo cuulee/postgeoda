@@ -2,7 +2,7 @@
 -- Author: Xun Li <lixun910@gmail.com>-
 -- Date: 2021-4-30
 -- Changes:
--- 2021-4-30 add skater(), add schc(), redcap()
+-- 2021-4-30 add skater()
 --------------------------------------
 
 --------------------------------------
@@ -34,7 +34,12 @@ AS 'MODULE_PATHNAME', 'pg_skater1_window'
 --------------------------------------
 -- skater(5, ARRAY["Crm_prs", "Crm_prp"], bytea, min_bound=Pop1831, min_bound_val=3236.67)
 --------------------------------------
-CREATE OR REPLACE FUNCTION skater(integer, anyarray, bytea, integer, anyelement, float)
+CREATE OR REPLACE FUNCTION skater(integer, anyarray, bytea, anyelement, float)
+    RETURNS integer
+AS 'MODULE_PATHNAME', 'pg_skater2_window'
+    LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
+
+CREATE OR REPLACE FUNCTION skater(integer, anyarray, bytea, bigint, float)
     RETURNS integer
 AS 'MODULE_PATHNAME', 'pg_skater2_window'
     LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
@@ -47,4 +52,25 @@ CREATE OR REPLACE FUNCTION skater(
 )
     RETURNS integer
 AS 'MODULE_PATHNAME', 'pg_skater2_window'
+    LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
+
+CREATE OR REPLACE FUNCTION skater(
+    integer, anyarray, bytea, bigint, float, character varying, character varying, integer, integer
+)
+    RETURNS integer
+AS 'MODULE_PATHNAME', 'pg_skater2_window'
+    LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
+
+
+--------------------------------------
+-- skater(ARRAY["Crm_prs", "Crm_prp"], bytea, min_bound=Pop1831, min_bound_val=3236.67)
+--------------------------------------
+CREATE OR REPLACE FUNCTION skater(anyarray, bytea, anyelement, float)
+    RETURNS integer
+AS 'MODULE_PATHNAME', 'pg_skater3_window'
+    LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
+
+CREATE OR REPLACE FUNCTION skater(anyarray, bytea, bigint, float)
+    RETURNS integer
+AS 'MODULE_PATHNAME', 'pg_skater3_window'
     LANGUAGE 'c' IMMUTABLE STRICT WINDOW;

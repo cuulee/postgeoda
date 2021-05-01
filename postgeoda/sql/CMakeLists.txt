@@ -11,7 +11,7 @@ set(SOURCE_FILES
         joincount.sql
         quantilelisa.sql
         breaks.sql
-        scc.sql
+        skater.sql
         )
 
 set(MODULE_PATHNAME "$libdir/postgeoda-${PROJECT_VERSION_MOD}")
