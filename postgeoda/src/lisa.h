@@ -20,6 +20,13 @@ extern "C" {
 #include <windowapi.h>
 
 
+typedef struct {
+    bool	isdone;
+    bool	isnull;
+    int     *result;
+    /* variable length */
+} scc_context;
+
 /**
  * lisa_context
  *
@@ -143,6 +150,39 @@ static inline bool check_dist_type(const char* typ) {
     }
 
     return false;
+}
+
+
+static inline char* get_scale_method_arg(WindowObject winobj, int arg_index)
+{
+    bool isnull;
+    VarChar *arg = (VarChar *)DatumGetVarCharPP(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
+    if (isnull) {
+        return 0;
+    }
+    char *scale_method = (char *)VARDATA(arg);
+    if (!check_scale_method(scale_method)) {
+        ereport(ERROR,
+                (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+                        errmsg("scaling method should be one of: 'raw', 'standardize', 'demean', 'mad', 'range_standardize', 'range_adjust'")));
+    }
+    return scale_method;
+}
+
+static inline char* get_distance_type_arg(WindowObject winobj, int arg_index)
+{
+    bool isnull;
+    VarChar *arg = (VarChar *)DatumGetVarCharPP(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
+    if (isnull) {
+        return 0;
+    }
+    char *dist_type = (char *)VARDATA(arg);
+    if (!check_dist_type(dist_type)) {
+        ereport(ERROR,
+                (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+                        errmsg("distance type should be one of: 'euclidean', 'manhattan'")));
+    }
+    return dist_type;
 }
 
 typedef struct {

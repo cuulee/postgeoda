@@ -19,25 +19,26 @@
 
 double* pg_hinge_aggregate(List *data, List *undefs, bool is_hinge15)
 {
-    std::cout << "Enter pg_hinge_aggregate()" << std::endl;
     ListCell *l;
     size_t nelems = list_length(data);
+    std::cout << list_length(data) << "," << list_length(undefs) << std::endl;
 
     std::vector<double> values(nelems, 0);
     std::vector<bool> value_undefs(nelems, false);
+
     int i = 0;
     foreach(l, data) {
         double* val = (double*) (lfirst(l));
         values[i++] = val[0];
         lwfree(val);
     }
+    i = 0;
     foreach(l, undefs) {
         bool* undef = (bool*) (lfirst(l));
         value_undefs[i++] = undef[0];
         lwfree(undef);
     }
 
-    std::cout << "gda_hinge15breaks()" << std::endl;
     std::vector<double> breaks;
     if (is_hinge15) {
         breaks = gda_hinge15breaks(values, value_undefs);
@@ -51,7 +52,6 @@ double* pg_hinge_aggregate(List *data, List *undefs, bool is_hinge15)
         result[i] = breaks[i];
     }
 
-    std::cout << "Exit pg_hinge_aggregate()" << std::endl;
     return result;
 }
 
@@ -68,6 +68,7 @@ double* pg_percentile_aggregate(List *data, List *undefs, int* n_breaks)
         values[i++] = val[0];
         lwfree(val);
     }
+    i = 0;
     foreach(l, undefs) {
         bool* undef = (bool*) (lfirst(l));
         value_undefs[i++] = undef[0];
@@ -99,6 +100,8 @@ double* pg_stddev_aggregate(List *data, List *undefs, int* n_breaks)
         values[i++] = val[0];
         lwfree(val);
     }
+
+    i = 0;
     foreach(l, undefs) {
         bool* undef = (bool*) (lfirst(l));
         value_undefs[i++] = undef[0];
@@ -130,6 +133,7 @@ double* pg_quantile_aggregate(List *data, List *undefs, int k)
         values[i++] = val[0];
         lwfree(val);
     }
+    i = 0;
     foreach(l, undefs) {
         bool* undef = (bool*) (lfirst(l));
         value_undefs[i++] = undef[0];
@@ -160,6 +164,7 @@ double* pg_naturalbreaks_aggregate(List *data, List *undefs, int k)
         values[i++] = val[0];
         lwfree(val);
     }
+    i = 0;
     foreach(l, undefs) {
         bool* undef = (bool*) (lfirst(l));
         value_undefs[i++] = undef[0];

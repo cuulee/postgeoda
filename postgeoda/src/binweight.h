@@ -33,6 +33,7 @@
 #include <vector>
 #include <boost/unordered_map.hpp>
 
+#include <libgeoda/weights/GalWeight.h>
 #include <libgeoda/weights/GeodaWeight.h>
 
 class BinElement {
@@ -55,12 +56,15 @@ public:
     const std::vector<double> &getNbrWeights() const;
     bool checkNeighbor(uint32_t nbrIdx);
     size_t getSize();
+
+
 };
 
 class BinWeight : public GeoDaWeight {
     boost::unordered_map<uint32_t, BinElement*> w_dict;
 
     std::vector<uint32_t> fids;
+
 public:
     const std::vector<uint32_t> &getFids() const;
 

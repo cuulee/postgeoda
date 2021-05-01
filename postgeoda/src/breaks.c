@@ -47,7 +47,6 @@ typedef struct CollectVariableState
  * @return
  */
 Datum variable_transfn(PG_FUNCTION_ARGS);
-
 PG_FUNCTION_INFO_V1(variable_transfn);
 Datum variable_transfn(PG_FUNCTION_ARGS) {
     //lwdebug(1,"Enter variable_transfn.");
@@ -92,7 +91,7 @@ Datum variable_transfn(PG_FUNCTION_ARGS) {
     } else {
         val[0] = 0;
         undef[0] = true;
-        //lwdebug(1,"variable_transfn: NULL value");
+        lwdebug(1,"variable_transfn: NULL value");
     }
 
     // k (optional)
@@ -134,7 +133,6 @@ Datum hinge15_finalfn(PG_FUNCTION_ARGS)
     int nelems = 5;
     double *breaks = pg_hinge_aggregate(p->data, p->undefs, true);
 
-    lwdebug(1,"Prepare the PgSQL text return typ.");
     /* Prepare the PgSQL text return type */
     Datum elems[nelems];
     for (int i=0; i<nelems; ++i) {
@@ -175,7 +173,6 @@ Datum hinge30_finalfn(PG_FUNCTION_ARGS)
     int nelems = 5;
     double *breaks = pg_hinge_aggregate(data, p->undefs, false);
 
-    lwdebug(1,"Prepare the PgSQL text return typ.");
     /* Prepare the PgSQL text return type */
     Datum elems[nelems];
     for (int i=0; i<nelems; ++i) {
@@ -212,10 +209,9 @@ Datum percentile_finalfn(PG_FUNCTION_ARGS)
     p = (CollectVariableState*) PG_GETARG_POINTER(0);
 
     List *data = p->data;
-    int nelems = 0;
+    int nelems = 5;
     double *breaks = pg_percentile_aggregate(data, p->undefs, &nelems);
 
-    lwdebug(1,"Prepare the PgSQL text return typ.");
     /* Prepare the PgSQL text return type */
     Datum elems[nelems];
     for (int i=0; i<nelems; ++i) {
@@ -256,7 +252,6 @@ Datum stddev_finalfn(PG_FUNCTION_ARGS)
     int nelems = 0;
     double *breaks = pg_stddev_aggregate(data, p->undefs, &nelems);
 
-    lwdebug(1,"Prepare the PgSQL text return typ.");
     /* Prepare the PgSQL text return type */
     Datum elems[nelems];
     for (int i=0; i<nelems; ++i) {
@@ -297,7 +292,6 @@ Datum quantile_finalfn(PG_FUNCTION_ARGS)
     int nelems = p->k - 1;
     double *breaks = pg_quantile_aggregate(data, p->undefs, p->k);
 
-    lwdebug(1,"Prepare the PgSQL text return typ.");
     /* Prepare the PgSQL text return type */
     Datum elems[nelems];
     for (int i=0; i<nelems; ++i) {
@@ -337,7 +331,6 @@ Datum naturalbreaks_finalfn(PG_FUNCTION_ARGS)
     int nelems = p->k - 1;
     double *breaks = pg_naturalbreaks_aggregate(data, p->undefs, p->k);
 
-    lwdebug(1,"Prepare the PgSQL text return typ.");
     /* Prepare the PgSQL text return type */
     Datum elems[nelems];
     for (int i=0; i<nelems; ++i) {

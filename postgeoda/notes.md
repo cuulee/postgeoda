@@ -430,3 +430,13 @@ SELECT gid, local_moran(ep_pov::real, queen_w) OVER() FROM sdoh
 ) AS tmp
 WHERE sdoh.gid = tmp.gid
 
+SELECT neighbor_match_test(geom, ARRAY[ep_pov::real, ep_pci::real], 4) OVER() FROM sdoh;
+
+SELECT neighbor_match_test(geom, ARRAY[ep_pov::real, ep_pci::real], 4, 1.0,
+FALSE, FALSE, FALSE, 'standardize', 'euclidean') OVER() FROM sdoh;
+
+--SELECT hinge15_breaks(ep_pov::real) FROM sdoh;
+--SELECT percentile_breaks(ep_pov::real) FROM sdoh;
+--SELECT stddev_breaks(ep_pov::real) FROM sdoh;
+--SELECT quantile_breaks(ep_pov::real, 5) FROM sdoh;
+

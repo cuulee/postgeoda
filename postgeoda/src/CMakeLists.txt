@@ -1,15 +1,18 @@
 set(SOURCES
         ../../libgeoda/pg/utils.cpp
         ../../libgeoda/pg/geoms.cpp
+        ../../libgeoda/gda_sa.cpp
         ../../libgeoda/gda_data.cpp
         ../../libgeoda/gda_weights.cpp
+        ../../libgeoda/gda_clustering.cpp
+        ../../libgeoda/GenGeomAlgs.cpp
+        ../../libgeoda/GenUtils.cpp
         ../../libgeoda/SpatialIndAlgs.cpp
         ../../libgeoda/weights/VoronoiUtils.cpp
         ../../libgeoda/weights/PolysToContigWeights.cpp
         ../../libgeoda/weights/GalWeight.cpp
         ../../libgeoda/weights/GeodaWeight.cpp
         ../../libgeoda/weights/GwtWeight.cpp
-        ../../libgeoda/gda_sa.cpp
         ../../libgeoda/sa/LISA.cpp
         ../../libgeoda/sa/BatchLISA.cpp
         ../../libgeoda/sa/BatchLocalMoran.cpp
@@ -20,8 +23,14 @@ set(SOURCES
         ../../libgeoda/sa/UniGstar.cpp
         ../../libgeoda/sa/UniJoinCount.cpp
         ../../libgeoda/sa/UniLocalMoran.cpp
-        ../../libgeoda/GenGeomAlgs.cpp
-        ../../libgeoda/GenUtils.cpp
+        ../../libgeoda/clustering/redcap.cpp
+        ../../libgeoda/clustering/redcap_wrapper.cpp
+        ../../libgeoda/clustering/cluster.cpp
+        ../../libgeoda/clustering/azp.cpp
+        ../../libgeoda/clustering/azp_wrapper.cpp
+        ../../libgeoda/clustering/schc_wrapper.cpp
+        ../../libgeoda/clustering/fastcluster.cpp
+        ../../libgeoda/clustering/maxp_wrapper.cpp
         ../../libgeoda/knn/ANN.cpp
         ../../libgeoda/knn/bd_fix_rad_search.cpp
         ../../libgeoda/knn/bd_pr_search.cpp
@@ -37,6 +46,7 @@ set(SOURCES
         ../../libgeoda/knn/kd_util.cpp
         ../../libgeoda/knn/perf.cpp
         breaks.c
+        redcap.c
         weights_cont.c
         weights_knn.c
         weights_dist.c
@@ -52,6 +62,7 @@ set(SOURCES
         proxy_localg.cpp
         proxy_quantilelisa.cpp
         proxy_breaks.cpp
+        proxy_scc.cpp
         )
 
 # Add test source code in Debug builds
