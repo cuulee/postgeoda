@@ -288,12 +288,13 @@ double* pg_quantile_aggregate(List *data, List *undefs, int k);
 
 double* pg_naturalbreaks_aggregate(List *data, List *undefs, int k);
 
-int* skater1_window(int k, int N, int n_vars, const double** r, const uint8_t** bw, const size_t* w_size,
-                    int min_region, const char *scale_type, const char* dist_type, int seed, int cpu_threads);
+int* redcap1_window(int k, int N, int n_vars, const double** r, const uint8_t** bw, const size_t* w_size,
+                    int min_region, const char* redcap_method, const char *scale_type, const char* dist_type,
+                    int seed, int cpu_threads);
 
-int* skater2_window(int k, int N, int n_vars, const double** r, const uint8_t** bw, const size_t* w_size,
-                   const double* bound_var, double min_bound, const char *scale_type, const char* dist_type,
-                   int seed, int cpu_threads);
+int* redcap2_window(int k, int N, int n_vars, const double** r, const uint8_t** bw, const size_t* w_size,
+                   const double* bound_var, double min_bound, const char* redcap_method, const char *scale_type,
+                   const char* dist_type, int seed, int cpu_threads);
 
 #ifdef __cplusplus
 }

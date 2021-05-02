@@ -117,6 +117,26 @@ static inline bool check_perm_method(const char* method) {
     return false;
 }
 
+static inline bool check_redcap_method(const char* method) {
+    if (method == 0) {
+        return false;
+    }
+
+    if (strncmp(method, "firstorder-singlelinkage", 24) == 0) {
+        return true;
+    } else if (strncmp(method, "fullorder-completelinkage", 25) == 0) {
+        return true;
+    } else if (strncmp(method, "fullorder-averagelinkage", 24) == 0) {
+        return true;
+    } else if (strncmp(method, "fullorder-singlelinkage", 23) == 0) {
+        return true;
+    } else if (strncmp(method, "fullorder-wardlinkage", 21) == 0) {
+        return true;
+    }
+
+    return false;
+}
+
 static inline bool check_scale_method(const char* method) {
     if (method == 0) {
         return false;

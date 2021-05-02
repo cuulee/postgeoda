@@ -2,7 +2,7 @@
  * Author: Xun Li <lixun910@gmail.com>
  *
  * Changes:
- * 2021-4-30 add pg_skater1_window(), pg_skater2_window(), pg_skater3_window()
+ * 2021-5-1 add pg_redcap1_window(), pg_redcap2_window(), pg_redcap3_window()
  */
 
 #include <postgres.h>
@@ -31,9 +31,9 @@ PG_MODULE_MAGIC;
 #endif
 
 
-Datum pg_skater1_window(PG_FUNCTION_ARGS);
-PG_FUNCTION_INFO_V1(pg_skater1_window);
-Datum pg_skater1_window(PG_FUNCTION_ARGS) {
+Datum pg_redcap1_window(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(pg_redcap1_window);
+Datum pg_redcap1_window(PG_FUNCTION_ARGS) {
     WindowObject winobj = PG_WINDOW_OBJECT();
     scc_context *context;
     int64 curpos, rowcount;
@@ -93,7 +93,6 @@ Datum pg_skater1_window(PG_FUNCTION_ARGS) {
             r[i] = lwalloc(sizeof(double) * arrayLength);
             for (size_t j = 0; j < arrayLength; ++j) {
                 r[i][j] = get_numeric_val(arrayElementType, arrayContent[j]);
-                lwdebug(1, "pg_skater1_window. r[%d][%d]=%f", i, j, r[i][j]);
             }
 
             Datum arg1 = WinGetFuncArgInPartition(winobj, arg_idx_weights, i, WINDOW_SEEK_HEAD, false, &isnull, &isout);
@@ -110,12 +109,21 @@ Datum pg_skater1_window(PG_FUNCTION_ARGS) {
         // k
         int k = DatumGetInt16(WinGetFuncArgCurrent(winobj, 0, &isnull));
         if (isnull || k <= 0) {
-            elog(ERROR, "skater: k should be a positive integer number.");
+            elog(ERROR, "redcap: k should be a positive integer number.");
         }
 
-        lwdebug(1, "pg_skater1_window. k=%d", k);
+        char* redcap_method = 0;
+        VarChar *arg = (VarChar *)DatumGetVarCharPP(WinGetFuncArgCurrent(winobj, 3, &isnull));
+        redcap_method = (char *)VARDATA(arg);
+        if (!check_redcap_method(redcap_method)) {
+            ereport(ERROR,
+                    (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+                            errmsg("redcap method should be one of: \"firstorder-singlelinkage\", \"fullorder-completelinkage\", \"fullorder-averagelinkage\",\"fullorder-singlelinkage\", \"fullorder-wardlinkage\"")));
+        }
 
-        int arg_idx = 3; // other optional args
+        lwdebug(1, "pg_redcap1_window. k=%d method=%s", k, redcap_method);
+
+        int arg_idx = 4; // other optional args
 
         // min_region_size
         int min_region = 0;
@@ -154,7 +162,7 @@ Datum pg_skater1_window(PG_FUNCTION_ARGS) {
 
         // call redcap
         int *result = redcap1_window(k, N, arrayLength, (const double**)r, (const uint8_t**)w, w_size, min_region,
-                                     0, (const char*)scale_method, (const char*)dist_type, seed, cpu_threads);
+                                     redcap_method, (const char*)scale_method, (const char*)dist_type, seed, cpu_threads);
 
         // Clean
         for (int i=0; i<N; ++i) lwfree(r[i]);
@@ -163,14 +171,14 @@ Datum pg_skater1_window(PG_FUNCTION_ARGS) {
         lwfree(w);
 
         if (result == 0) {
-            elog(ERROR, "skater: can't find clusters. Please check if the connectivity of input spatial weights "
+            elog(ERROR, "redcap: can't find clusters. Please check if the connectivity of input spatial weights "
                         "is complete.");
         }
         // Safe the result
         context->result = result;
         context->isdone = true;
 
-        lwdebug(1, "Exit pg_skater_window. free_lisa() done.");
+        lwdebug(1, "Exit pg_redcap_window. free_lisa() done.");
     }
 
     if (context->isnull)
@@ -180,9 +188,9 @@ Datum pg_skater1_window(PG_FUNCTION_ARGS) {
     PG_RETURN_INT16(context->result[curpos]);
 }
 
-Datum pg_skater2_window(PG_FUNCTION_ARGS);
-PG_FUNCTION_INFO_V1(pg_skater2_window);
-Datum pg_skater2_window(PG_FUNCTION_ARGS) {
+Datum pg_redcap2_window(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(pg_redcap2_window);
+Datum pg_redcap2_window(PG_FUNCTION_ARGS) {
     WindowObject winobj = PG_WINDOW_OBJECT();
     scc_context *context;
     int64 curpos, rowcount;
@@ -258,10 +266,21 @@ Datum pg_skater2_window(PG_FUNCTION_ARGS) {
         // k
         int k = DatumGetInt16(WinGetFuncArgCurrent(winobj, 0, &isnull));
         if (isnull || k <= 0) {
-            elog(ERROR, "skater: k should be a positive integer number.");
+            elog(ERROR, "redcap: k should be a positive integer number.");
         }
 
-        int arg_idx = 3; // other optional args
+        char* redcap_method = 0;
+        VarChar *arg = (VarChar *)DatumGetVarCharPP(WinGetFuncArgCurrent(winobj, 3, &isnull));
+        redcap_method = (char *)VARDATA(arg);
+        if (!check_redcap_method(redcap_method)) {
+            ereport(ERROR,
+                    (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+                            errmsg("redcap method should be one of: \"firstorder-singlelinkage\", \"fullorder-completelinkage\", \"fullorder-averagelinkage\",\"fullorder-singlelinkage\", \"fullorder-wardlinkage\"")));
+        }
+
+        lwdebug(1, "pg_redcap2_window. k=%d method=%s", k, redcap_method);
+
+        int arg_idx = 4; // other optional args
 
         // min bound variable
         double *bound_var  = 0;
@@ -316,7 +335,7 @@ Datum pg_skater2_window(PG_FUNCTION_ARGS) {
 
         // call redcap
         int *result = redcap2_window(k, N, arrayLength, (const double**)r, (const uint8_t**)w, w_size, bound_var,
-                                     min_bound, 0, scale_method, dist_type, seed, cpu_threads);
+                                     min_bound, redcap_method, scale_method, dist_type, seed, cpu_threads);
 
         // Clean
         for (int i=0; i<N; ++i) lwfree(r[i]);
@@ -326,7 +345,7 @@ Datum pg_skater2_window(PG_FUNCTION_ARGS) {
         if (bound_var) lwfree(bound_var);
 
         if (result == 0) {
-            elog(ERROR, "skater: can't find clusters. Please check if the connectivity of input spatial weights "
+            elog(ERROR, "redcap: can't find clusters. Please check if the connectivity of input spatial weights "
                         "is complete.");
         }
 
@@ -334,7 +353,7 @@ Datum pg_skater2_window(PG_FUNCTION_ARGS) {
         context->result = result;
         context->isdone = true;
 
-        lwdebug(1, "Exit pg_skater2_window. free_lisa() done.");
+        lwdebug(1, "Exit pg_redcap2_window. free_lisa() done.");
     }
 
     if (context->isnull)
@@ -345,9 +364,9 @@ Datum pg_skater2_window(PG_FUNCTION_ARGS) {
 }
 
 
-Datum pg_skater3_window(PG_FUNCTION_ARGS);
-PG_FUNCTION_INFO_V1(pg_skater3_window);
-Datum pg_skater3_window(PG_FUNCTION_ARGS) {
+Datum pg_redcap3_window(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(pg_redcap3_window);
+Datum pg_redcap3_window(PG_FUNCTION_ARGS) {
     WindowObject winobj = PG_WINDOW_OBJECT();
     scc_context *context;
     int64 curpos, rowcount;
@@ -419,8 +438,19 @@ Datum pg_skater3_window(PG_FUNCTION_ARGS) {
             w_size[i] = VARSIZE_ANY_EXHDR(w_bytea);
         }
 
+        char* redcap_method = 0;
+        VarChar *arg = (VarChar *)DatumGetVarCharPP(WinGetFuncArgCurrent(winobj, 2, &isnull));
+        redcap_method = (char *)VARDATA(arg);
+        if (!check_redcap_method(redcap_method)) {
+            ereport(ERROR,
+                    (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+                            errmsg("redcap method should be one of: \"firstorder-singlelinkage\", \"fullorder-completelinkage\", \"fullorder-averagelinkage\",\"fullorder-singlelinkage\", \"fullorder-wardlinkage\"")));
+        }
+
+        lwdebug(1, "pg_redcap3_window. method=%s", redcap_method);
+
         // read arguments
-        int arg_idx = 2;
+        int arg_idx = 3;
 
         // min bound variable
         double *bound_var  = 0;
@@ -476,7 +506,7 @@ Datum pg_skater3_window(PG_FUNCTION_ARGS) {
 
         // call redcap
         int *result = redcap2_window(N*N, N, arrayLength, (const double**)r, (const uint8_t**)w, w_size, bound_var,
-                                     min_bound, 0, scale_method, dist_type, seed, cpu_threads);
+                                     min_bound, redcap_method, scale_method, dist_type, seed, cpu_threads);
 
         // Clean
         for (int i=0; i<N; ++i) lwfree(r[i]);
@@ -486,7 +516,7 @@ Datum pg_skater3_window(PG_FUNCTION_ARGS) {
         if (bound_var) lwfree(bound_var);
 
         if (result == 0) {
-            elog(ERROR, "skater: can't find clusters. Please check if the connectivity of input spatial weights "
+            elog(ERROR, "redcap: can't find clusters. Please check if the connectivity of input spatial weights "
                         "is complete.");
         }
 
@@ -494,7 +524,7 @@ Datum pg_skater3_window(PG_FUNCTION_ARGS) {
         context->result = result;
         context->isdone = true;
 
-        lwdebug(1, "Exit pg_skater3_window. free_lisa() done.");
+        lwdebug(1, "Exit pg_redcap3_window. free_lisa() done.");
     }
 
     if (context->isnull)

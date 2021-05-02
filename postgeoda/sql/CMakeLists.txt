@@ -12,6 +12,7 @@ set(SOURCE_FILES
         quantilelisa.sql
         breaks.sql
         skater.sql
+        redcap.sql
         )
 
 set(MODULE_PATHNAME "$libdir/postgeoda-${PROJECT_VERSION_MOD}")
