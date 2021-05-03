@@ -114,7 +114,7 @@ include_directories(
         ${PROJECT_SOURCE_DIR}/src #postgeoda
         ${CMAKE_SOURCE_DIR} # libgeoda
 )
-include_directories(${CMAKE_SOURCE_DIR}/boost)
+include_directories(${CMAKE_SOURCE_DIR}/boost/include)
 include_directories(${PG_INCLUDEDIR_SERVER})
 include_directories(${PG_INCLUDEDIR})
 

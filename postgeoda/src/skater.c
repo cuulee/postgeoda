@@ -93,7 +93,7 @@ Datum pg_skater1_window(PG_FUNCTION_ARGS) {
             r[i] = lwalloc(sizeof(double) * arrayLength);
             for (size_t j = 0; j < arrayLength; ++j) {
                 r[i][j] = get_numeric_val(arrayElementType, arrayContent[j]);
-                lwdebug(1, "pg_skater1_window. r[%d][%d]=%f", i, j, r[i][j]);
+                //lwdebug(1, "pg_skater1_window. r[%d][%d]=%f", i, j, r[i][j]);
             }
 
             Datum arg1 = WinGetFuncArgInPartition(winobj, arg_idx_weights, i, WINDOW_SEEK_HEAD, false, &isnull, &isout);

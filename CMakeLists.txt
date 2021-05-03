@@ -11,7 +11,7 @@ project(geoda)
 message(STATUS "Binary dir: ${CMAKE_BINARY_DIR}")
 
 set( CMAKE_VERBOSE_MAKEFILE on )
-
+set (CMAKE_CXX_STANDARD 14)
 set (DEP_LIBRARY_PATH ${CMAKE_SOURCE_DIR}/3rd_party)
 set (DEP_OS_SUB "")
 
