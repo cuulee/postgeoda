@@ -274,6 +274,7 @@ void PostGeoDa::AddNullGeometry() {
  */
 PGWeight *PostGeoDa::create_pgweight(GeoDaWeight* gda_w)
 {
+    std::cout << "create_pgweight" << std::endl;
     PGWeight* pg_w = (PGWeight*)malloc(sizeof(PGWeight));
 
     pg_w->w_type = 'a'; // GAL type
@@ -331,6 +332,28 @@ PGWeight *PostGeoDa::CreateKnnWeights(int k, double power, bool is_inverse, bool
 
     std::string poly_id = "";
     GeoDaWeight* gda_w = gda_knn_weights(this, k, power, is_inverse, is_arc, is_mile,
+                                         kernel, bandwidth, adaptive_bandwidth, use_kernel_diagonal, poly_id);
+
+    lwdebug(1, "Enter CreateKnnWeights: min_nbrs=%d", gda_w->GetMinNbrs());
+    lwdebug(1, "Enter CreateKnnWeights: sparsity=%f", gda_w->GetSparsity());
+    lwdebug(1, "GeoDaWeight: gda_w=%x", gda_w);
+
+    PGWeight* pg_w =  create_pgweight(gda_w);
+
+    delete gda_w;
+
+    lwdebug(1, "Enter PostGeoDa::CreateKnnWeights().");
+    return pg_w;
+}
+
+PGWeight *PostGeoDa::CreateKnnWeightsSub(int k, int start, int end, double power, bool is_inverse, bool is_arc,
+                                      bool is_mile, std::string kernel,
+                                      double bandwidth, bool adaptive_bandwidth,
+                                      bool use_kernel_diagonal) {
+    lwdebug(1, "Enter PostGeoDa::CreateKnnWeightsSub(k=%d, start=%d, end=%d).", k, start, end);
+
+    std::string poly_id = "";
+    GeoDaWeight* gda_w = gda_knn_weights_sub(this, k, start, end, power, is_inverse, is_arc, is_mile,
                                          kernel, bandwidth, adaptive_bandwidth, use_kernel_diagonal, poly_id);
 
     lwdebug(1, "Enter CreateKnnWeights: min_nbrs=%d", gda_w->GetMinNbrs());

@@ -45,6 +45,10 @@ public:
                                std::string kernel = "", double bandwidth = 0,
                                bool adaptive_bandwidth = false, bool use_kernel_diagonal = false);
 
+    PGWeight* CreateKnnWeightsSub(int k, int start, int end, double power, bool is_inverse, bool is_arc, bool is_mile,
+                               std::string kernel = "", double bandwidth = 0,
+                               bool adaptive_bandwidth = false, bool use_kernel_diagonal = false);
+
     PGWeight* CreateDistanceWeights(double dist_threshold, double power, bool is_inverse, bool is_arc, bool is_mile,
                                     std::string kernel = "", bool use_kernel_diagonal = false);
 

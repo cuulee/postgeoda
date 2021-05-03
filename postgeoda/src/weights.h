@@ -245,12 +245,12 @@ static inline uint8_t *weights_to_bytes(PGWeight *w, size_t *size_out) {
  * @return bytea**
  */
 static inline bytea **weights_to_bytea_array(PGWeight *w) {
-    lwdebug(1,"Enter weights_to_bytea_array.");
+    lwdebug(1,"Enter weights_to_bytea_array: %d.", w->num_obs);
 
     int32_t num_obs = w->num_obs;
 
-    size_t *buf_size_array = lwalloc(sizeof(size_t) * num_obs);
-    bytea **results = lwalloc(sizeof(bytea*) * num_obs);
+    size_t *buf_size_array = (size_t*)palloc(sizeof(size_t) * num_obs);
+    bytea **results = (bytea **)palloc(sizeof(bytea*) * num_obs);
 
     for (size_t i = 0; i < num_obs; ++i) {
         size_t buf_size = 0;
@@ -266,9 +266,13 @@ static inline bytea **weights_to_bytea_array(PGWeight *w) {
 
     for (size_t i = 0; i < num_obs; ++i) {
         size_t buf_size = buf_size_array[i];
-        uint8_t *buf = lwalloc(buf_size);
+        if (buf_size == 0) {
+            results[i] = 0;
+            continue;
+        }
+        uint8_t *buf = palloc(buf_size);
         uint8_t *pos = buf; // retain the start pos
-        memcpy(buf, (uint8_t *) (&w->neighbors[i].idx), sizeof(uint32_t)); // copy idx
+        memcpy(buf, &(w->neighbors[i].idx), sizeof(uint32_t)); // copy idx
         buf += sizeof(uint32_t);
 
         uint16_t num_nbrs = w->neighbors[i].num_nbrs;
@@ -292,15 +296,19 @@ static inline bytea **weights_to_bytea_array(PGWeight *w) {
         }
         // copy to bytea type
         bytea *result = palloc(buf_size + VARHDRSZ);
-        memcpy(VARDATA(result), pos, buf_size);
         SET_VARSIZE(result, buf_size+VARHDRSZ);
+        memcpy(VARDATA(result), pos, buf_size);
+        //bytea *result = palloc(sizeof(char)+ VARHDRSZ);
+        //SET_VARSIZE(result, sizeof(char)+VARHDRSZ);
+        //memcpy(VARDATA(result), &i, sizeof(char));
+
         results[i] =  result;
 
         // clean
-        lwfree(pos);
+        pfree(pos);
     }
 
-    lwfree(buf_size_array);
+    pfree(buf_size_array);
     lwdebug(1,"Exit weights_to_bytea_array.");
     return results;
 }

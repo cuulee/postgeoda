@@ -138,6 +138,17 @@ PGWeight* create_knn_weights(List *lfids, List *lwgeoms, int k, double power,
     return w;
 }
 
+PGWeight* create_knn_weights_sub(List *lfids, List *lwgeoms, int k, int start, int end, double power,
+                             bool is_inverse, bool is_arc, bool is_mile)
+{
+    lwdebug(1,"Enter create_knn_weights_sub.");
+    PostGeoDa* geoda = build_pg_geoda(lfids, lwgeoms);
+    PGWeight *w = geoda->CreateKnnWeightsSub(k, start, end, power, is_inverse, is_arc, is_mile);
+    delete geoda;
+    lwdebug(1,"Exit create_knn_weights_sub.");
+    return w;
+}
+
 PGWeight* create_kernel_knn_weights(List *lfids, List *lwgeoms, int k, double power,
                                     bool is_inverse, bool is_arc, bool is_mile,
                                     const char* kernel,

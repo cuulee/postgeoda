@@ -93,6 +93,8 @@ PGWeight* create_cont_weights(List *fids, List *geoms, bool is_queen, int order,
 PGWeight* create_knn_weights(List *fids, List *geoms, int k, double power,
                              bool is_inverse, bool is_arc, bool is_mile);
 
+PGWeight* create_knn_weights_sub(List *fids, List *geoms, int k, int start, int end, double power,
+                             bool is_inverse, bool is_arc, bool is_mile);
 /**
  *
  * @param fids

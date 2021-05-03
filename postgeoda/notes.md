@@ -442,3 +442,13 @@ FALSE, FALSE, FALSE, 'standardize', 'euclidean') OVER() FROM sdoh;
 
 SELECT skater(5, ARRAY[ep_pov::real, ep_unem::real], queen_w) OVER() FROM sdoh;
 
+56,861,745
+56Million
+
+20GB memory
+
+ogr2ogr -f PostgreSQL PG:"host=localhost user=postgres dbname=xun password=abc123" NETS2014_Misc.csv -oo AUTODETECT_TYPE=YES -oo X_POSSIBLE_NAMES=longitude -oo Y_POSSIBLE_NAMES=latitude
+
+UPDATE 999999
+
+Query returned successfully in 32 secs 992 msec.

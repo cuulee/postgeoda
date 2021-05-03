@@ -32,9 +32,6 @@ extern "C" {
 PG_MODULE_MAGIC;
 #endif
 
-
-
-
 /**
  * contiguity_context
  *
@@ -46,6 +43,7 @@ typedef struct {
     bool	isdone;
     bool	isnull;
     bytea **result;
+    PGWeight *w;
     /* variable length */
 } knn_context;
 
@@ -61,6 +59,161 @@ PG_FUNCTION_INFO_V1(pg_knn_weights_window);
 Datum pg_knn_weights_window(PG_FUNCTION_ARGS) {
     //this function will be called multiple times until context->isdone==true
     //lwdebug(1, "Enter pg_knn_weights.");
+
+    WindowObject winobj = PG_WINDOW_OBJECT();
+    knn_context *context;
+    int64 curpos, rowcount;
+
+    rowcount = WinGetPartitionRowCount(winobj);
+    context = (knn_context *)WinGetPartitionLocalMemory(winobj, sizeof(knn_context) + sizeof(int) * rowcount);
+
+    if (!context->isdone) {
+        bool isnull, isout;
+
+        /* We also need a non-zero N */
+        int N = rowcount; //(int) WinGetPartitionRowCount(winobj);
+        if (N <= 0) {
+            context->isdone = true;
+            context->isnull = true;
+            PG_RETURN_NULL();
+        }
+
+        // read data
+        List *geoms;
+        List *fids;
+
+        for (size_t i = 0; i < N; i++) {
+            // fid
+            Datum arg = WinGetFuncArgInPartition(winobj, 0, i, WINDOW_SEEK_HEAD, false, &isnull, &isout);
+            int64 fid = DatumGetInt64(arg);
+            //lwdebug(1, "local_g_window_bytea: %d-th:%d", i, fids[i]);
+
+            // the_geom
+            Datum arg1 = WinGetFuncArgInPartition(winobj, 1, i, WINDOW_SEEK_HEAD, false, &isnull, &isout);
+            bytea *bytea_wkb = (bytea*)PG_DETOAST_DATUM_COPY(arg1);
+            uint8_t *wkb = (uint8_t *) VARDATA(bytea_wkb);
+            LWGEOM *lwgeom = lwgeom_from_wkb(wkb, VARSIZE_ANY_EXHDR(bytea_wkb), LW_PARSER_CHECK_ALL);
+            if (i==0) {
+                geoms = list_make1(lwgeom);
+                fids = list_make1_int(fid);
+            } else {
+                lappend(geoms, lwgeom);
+                lappend_int(fids, fid);
+            }
+        }
+        lwdebug(1, "pg_knn_weights. N=%d, geoms=%d", N, list_length(geoms));
+
+        int arg_index = 2;
+
+        // read arguments
+        int k = 4;
+        if (arg_index < PG_NARGS()) {
+            k = DatumGetInt32(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
+            if (isnull || k <= 0) {
+                k = 4;
+            }
+        }
+        arg_index += 1;
+
+        double power = 1.0;
+        if (arg_index < PG_NARGS()) {
+            power = DatumGetFloat4(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
+            if (isnull || power < 0) {
+                power = 1.0;
+            }
+        }
+        arg_index += 1;
+
+        bool is_inverse = false;
+        if (arg_index < PG_NARGS()) {
+            is_inverse = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
+        }
+        arg_index += 1;
+
+        bool is_arc = false;
+        if (arg_index < PG_NARGS()) {
+            is_arc = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
+        }
+        arg_index += 1;
+
+        bool is_mile = false;
+        if (arg_index < PG_NARGS()) {
+            is_mile = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
+        }
+        arg_index += 1;
+
+        // create weights
+        PGWeight* w = create_knn_weights(fids, geoms, k, power, is_inverse, is_arc, is_mile);
+        //bytea **result = weights_to_bytea_array(w);
+
+        // Safe the result
+        context->w = w;
+        context->isdone = true;
+
+        // free PGWeight
+        //free_pgweight(w);
+
+        lwdebug(1, "Exit pg_knn_weights. done.");
+    }
+
+    if (context->isnull) {
+        PG_RETURN_NULL();
+    }
+
+    curpos = WinGetCurrentPosition(winobj);
+
+        size_t buf_size = 0;
+        buf_size += sizeof(uint32_t); // idx
+        uint16_t num_nbrs = context->w->neighbors[curpos].num_nbrs;
+        buf_size += sizeof(uint16_t); // num_nbrs
+        buf_size += sizeof(uint32_t) * num_nbrs;
+        if (context->w->w_type == 'w') {
+            buf_size += sizeof(float) * num_nbrs;
+        }
+
+        uint8_t *buf = palloc(buf_size);
+        uint8_t *pos = buf; // retain the start pos
+        memcpy(buf, &(context->w->neighbors[curpos].idx), sizeof(uint32_t)); // copy idx
+        buf += sizeof(uint32_t);
+
+        memcpy(buf, &num_nbrs, sizeof(uint16_t)); // copy n_nbrs
+        buf += sizeof(uint16_t);
+
+        for (size_t j = 0; j < num_nbrs; ++j) { // copy nbr_id
+            memcpy(buf, &context->w->neighbors[curpos].nbrId[j], sizeof(uint32_t));
+            buf += sizeof(uint32_t);
+        }
+
+        if (context->w->w_type == 'w') {
+            for (size_t j = 0; j < num_nbrs; ++j) { // copy nbr_weight
+                memcpy(buf, &context->w->neighbors[curpos].nbrWeight[j], sizeof(float));
+                buf += sizeof(float);
+            }
+        }
+
+        // copy to bytea type
+        bytea *result = palloc(buf_size + VARHDRSZ);
+        SET_VARSIZE(result, buf_size+VARHDRSZ);
+        memcpy(VARDATA(result), pos, buf_size);
+
+        // clean
+        pfree(pos);
+
+        PG_RETURN_BYTEA_P(result);
+}
+
+/**
+ * Window function for SQL `knn_weights()`
+ * This will be the main interface for knn weights.
+ *
+ * @param fcinfo
+ * @return
+ */
+Datum pg_knn_weights_sub_window(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(pg_knn_weights_sub_window);
+Datum pg_knn_weights_sub_window(PG_FUNCTION_ARGS) {
+    //this function will be called multiple times until context->isdone==true
+    //lwdebug(1, "Enter pg_knn_weights_sub_window.");
 
     WindowObject winobj = PG_WINDOW_OBJECT();
     knn_context *context;
@@ -116,6 +269,20 @@ Datum pg_knn_weights_window(PG_FUNCTION_ARGS) {
         }
         arg_index += 1;
 
+        int start = 0;
+        if (arg_index < PG_NARGS()) {
+            start = DatumGetInt32(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
+        }
+        arg_index += 1;
+
+        int end = 0;
+        if (arg_index < PG_NARGS()) {
+            end = DatumGetInt32(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
+        }
+        arg_index += 1;
+
+        lwdebug(1, "Exit start=%d, end=%d", start, end);
+
         double power = 1.0;
         if (arg_index < PG_NARGS()) {
             power = DatumGetFloat4(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
@@ -144,7 +311,7 @@ Datum pg_knn_weights_window(PG_FUNCTION_ARGS) {
         arg_index += 1;
 
         // create weights
-        PGWeight* w = create_knn_weights(fids, geoms, k, power, is_inverse, is_arc, is_mile);
+        PGWeight* w = create_knn_weights_sub(fids, geoms, k, start, end, power, is_inverse, is_arc, is_mile);
         bytea **result = weights_to_bytea_array(w);
 
         // Safe the result
@@ -154,7 +321,7 @@ Datum pg_knn_weights_window(PG_FUNCTION_ARGS) {
         // free PGWeight
         free_pgweight(w);
 
-        lwdebug(1, "Exit pg_knn_weights. done.");
+        lwdebug(1, "Exit pg_knn_weights_sub_window. done.");
     }
 
     if (context->isnull) {
