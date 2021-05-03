@@ -209,6 +209,8 @@ Datum pg_neighbor_match_test_window(PG_FUNCTION_ARGS) {
     Datum elems[2];
     elems[0] = Float8GetDatum(p[0]); // double to Datum
     elems[1] = Float8GetDatum(p[1]);
+    free(p);
+
     int nelems = 2;
     Oid elmtype = FLOAT8OID;
     int16 elmlen;

@@ -321,9 +321,9 @@ double** local_moran_window(int N, const double* r, const uint8_t** bw, const si
     const std::vector<int>& lisa_c = lisa->GetClusterIndicators();
 
     // results
-    double **result = (double **) palloc(sizeof(double*) * N);
+    double **result = (double **) malloc(sizeof(double*) * N);
     for (int i = 0; i < N; i++) {
-        result[i] = (double *) palloc(sizeof(double) * 3);
+        result[i] = (double *) malloc(sizeof(double) * 3);
         result[i][0] = lisa_i[i];
         result[i][1] = lisa_p[i];
         result[i][2] = lisa_c[i];

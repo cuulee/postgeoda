@@ -446,9 +446,93 @@ SELECT skater(5, ARRAY[ep_pov::real, ep_unem::real], queen_w) OVER() FROM sdoh;
 56Million
 
 20GB memory
+```SQL
+update nets2014_misc SET women = CASE
+WHEN womenowned = 'Y' THEN 1 ELSE 0 END
+```
+UPDATE 60061744
+Query returned successfully in 14 min 16 secs.
 
-ogr2ogr -f PostgreSQL PG:"host=localhost user=postgres dbname=xun password=abc123" NETS2014_Misc.csv -oo AUTODETECT_TYPE=YES -oo X_POSSIBLE_NAMES=longitude -oo Y_POSSIBLE_NAMES=latitude
 
-UPDATE 999999
+```SQL
+CREATE INDEX nets_geom_idx ON nets2014_misc USING GIST (geom);
+CREATE INDEX nnfid_idx ON tmp_10nn (ogc_fid)
+CREATE INDEX nnfid2_idx ON tmp2_10nn (ogc_fid)
+```
 
-Query returned successfully in 32 secs 992 msec.
+* 1Million
+
+-- Create Weights
+SELECT 999999
+Query returned successfully in 23 secs 124 msec.A
+
+-- local_joincount
+Successfully run. Total query runtime: 45 secs 394 msec.
+999999 rows affected.
+
+* 5Million
+
+-- Create Weights
+SELECT 4953899
+Query returned successfully in 2 min 8 secs.
+
+-- local_joincount
+Successfully run. Total query runtime: 1 min 37 secs.
+4953899 rows affected.
+
+* 10Million
+
+```SQL
+CREATE TABLE tmp_10nn AS (
+	SELECT ogc_fid, knn_weights(ogc_fid, geom, 10) OVER() FROM nets2014_misc where ogc_fid < 10000000
+)
+CREATE INDEX nnfid_idx ON tmp_10nn (ogc_fid)
+```
+SELECT 9953899
+Query returned successfully in 3 min 25 secs.
+
+```SQL
+SELECT local_moran(a.women, b.knn_weights) OVER() FROM nets2014_misc AS a, tmp_10nn AS b WHERE a.ogc_fid=b.ogc_fid;
+```
+Successfully run. Total query runtime: 3 min 52 secs.
+9953899 rows affected.
+
+```SQL
+SELECT local_joincount(a.women, b.knn_weights) OVER() FROM nets2014_misc AS a, tmp_10nn AS b WHERE a.ogc_fid=b.ogc_fid;
+```
+Successfully run. Total query runtime: 3 min 5 secs.
+9953899 rows affected.
+
+* 20 Million
+
+```SQL
+CREATE TABLE tmp2_10nn AS (
+    SELECT ogc_fid, knn_weights(ogc_fid, geom, 10) OVER() FROM nets2014_misc where ogc_fid < 20000000
+)
+CREATE INDEX nnfid2_idx ON tmp2_10nn (ogc_fid)
+```
+SELECT 19953899
+Query returned successfully in 8 min 18 secs..
+
+```SQL
+SELECT local_joincount(a.women, b.knn_weights) OVER() FROM nets2014_misc AS a, tmp2_10nn AS b WHERE a.ogc_fid=b.ogc_fid;
+```
+Successfully run. Total query runtime: 8 min 44 secs.
+19953899 rows affected.
+
+* 40 Million
+
+```SQL
+CREATE TABLE tmp4_10nn AS (
+    SELECT ogc_fid, knn_weights(ogc_fid, geom, 10) OVER() FROM nets2014_misc where ogc_fid < 40000000
+)
+CREATE INDEX nnfid4_idx ON tmp4_10nn (ogc_fid)
+```
+SELECT 39320891
+Query returned successfully in 19 min 2 secs.
+
+* Import data
+
+```bash
+ogr2ogr -f PostgreSQL PG:"host=localhost user=postgres dbname=test password=abc123" NETS2014_Misc.csv -oo AUTODETECT_TYPE=YES -oo X_POSSIBLE_NAMES=longitude -oo Y_POSSIBLE_NAMES=latitude
+```

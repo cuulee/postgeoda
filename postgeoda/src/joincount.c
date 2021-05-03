@@ -116,6 +116,8 @@ Datum pg_local_joincount_window(PG_FUNCTION_ARGS) {
     elems[0] = Float8GetDatum(p[0]); // double to Datum
     elems[1] = Float8GetDatum(p[1]);
     elems[2] = Float8GetDatum(p[2]);
+    free(p);
+
     int nelems = 3;
     Oid elmtype = FLOAT8OID;
     int16 elmlen;
@@ -222,6 +224,8 @@ Datum pg_local_bijoincount_window(PG_FUNCTION_ARGS) {
     elems[0] = Float8GetDatum(p[0]); // double to Datum
     elems[1] = Float8GetDatum(p[1]);
     elems[2] = Float8GetDatum(p[2]);
+    free(p);
+
     int nelems = 3;
     Oid elmtype = FLOAT8OID;
     int16 elmlen;
@@ -347,6 +351,8 @@ Datum pg_local_multijoincount_window(PG_FUNCTION_ARGS) {
     elems[0] = Float8GetDatum(p[0]); // double to Datum
     elems[1] = Float8GetDatum(p[1]);
     elems[2] = Float8GetDatum(p[2]);
+    free(p);
+
     int nelems = 3;
     Oid elmtype = FLOAT8OID;
     int16 elmlen;

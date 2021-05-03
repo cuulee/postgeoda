@@ -45,9 +45,9 @@ double** local_joincount_window(int N, const double* r, const uint8_t** bw, cons
     const std::vector<int>& lisa_c = lisa->GetNumNeighbors();
 
     // results
-    double **result = (double **) palloc(sizeof(double*) * N);
+    double **result = (double **) malloc(sizeof(double*) * N);
     for (int i = 0; i < N; i++) {
-        result[i] = (double *) palloc(sizeof(double) * 3);
+        result[i] = (double *) malloc(sizeof(double) * 3);
         result[i][0] = lisa_i[i];
         result[i][1] = lisa_p[i];
         result[i][2] = lisa_c[i];
@@ -97,9 +97,9 @@ double** local_bijoincount_window(int N, const double* r1, const double* r2, con
     const std::vector<int>& lisa_c = lisa->GetNumNeighbors();
 
     // results
-    double **result = (double **) palloc(sizeof(double*) * N);
+    double **result = (double **) malloc(sizeof(double*) * N);
     for (size_t i = 0; i < N; i++) {
-        result[i] = (double *) palloc(sizeof(double) * 3);
+        result[i] = (double *) malloc(sizeof(double) * 3);
         result[i][0] = lisa_i[i];
         result[i][1] = lisa_p[i];
         result[i][2] = lisa_c[i];
@@ -149,9 +149,9 @@ double** local_multijoincount_window(int N, int n_vars, const double** r, const 
     const std::vector<int>& lisa_c = lisa->GetNumNeighbors();
 
     // results
-    double **result = (double **) palloc(sizeof(double*) * N);
+    double **result = (double **) malloc(sizeof(double*) * N);
     for (size_t i = 0; i < N; i++) {
-        result[i] = (double *) palloc(sizeof(double) * 3);
+        result[i] = (double *) malloc(sizeof(double) * 3);
         result[i][0] = lisa_i[i];
         result[i][1] = lisa_p[i];
         result[i][2] = lisa_c[i];

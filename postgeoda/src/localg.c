@@ -117,6 +117,8 @@ Datum pg_local_g_window(PG_FUNCTION_ARGS) {
     elems[0] = Float8GetDatum(p[0]); // double to Datum
     elems[1] = Float8GetDatum(p[1]);
     elems[2] = Float8GetDatum(p[2]);
+    free(p);
+
     int nelems = 3;
     Oid elmtype = FLOAT8OID;
     int16 elmlen;
@@ -214,6 +216,8 @@ Datum pg_local_gstar_window(PG_FUNCTION_ARGS) {
     elems[0] = Float8GetDatum(p[0]); // double to Datum
     elems[1] = Float8GetDatum(p[1]);
     elems[2] = Float8GetDatum(p[2]);
+    free(p);
+
     int nelems = 3;
     Oid elmtype = FLOAT8OID;
     int16 elmlen;

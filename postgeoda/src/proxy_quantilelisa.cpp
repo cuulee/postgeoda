@@ -43,9 +43,9 @@ double** local_quantilelisa_window(int k, int quantile, int N, const double* r, 
     const std::vector<int>& lisa_c = lisa->GetNumNeighbors();
 
     // results
-    double **result = (double **) palloc(sizeof(double*) * N);
+    double **result = (double **) malloc(sizeof(double*) * N);
     for (size_t i = 0; i < N; i++) {
-        result[i] = (double *) palloc(sizeof(double) * 3);
+        result[i] = (double *) malloc(sizeof(double) * 3);
         result[i][0] = lisa_i[i];
         result[i][1] = lisa_p[i];
         result[i][2] = lisa_c[i];
@@ -99,9 +99,9 @@ double** local_multiquantilelisa_window(int n_vars, int* k, int* quantile, int N
     const std::vector<int>& lisa_c = lisa->GetNumNeighbors();
 
     // results
-    double **result = (double **) palloc(sizeof(double*) * N);
+    double **result = (double **) malloc(sizeof(double*) * N);
     for (size_t i = 0; i < N; i++) {
-        result[i] = (double *) palloc(sizeof(double) * 3);
+        result[i] = (double *) malloc(sizeof(double) * 3);
         result[i][0] = lisa_i[i];
         result[i][1] = lisa_p[i];
         result[i][2] = lisa_c[i];
