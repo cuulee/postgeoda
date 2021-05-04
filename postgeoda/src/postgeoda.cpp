@@ -6,12 +6,12 @@
  * 2021-4-23 Add CreateKnnWeights(); CreateDistanceWeights();
  */
 
+#include <limits>
 #include <libgeoda/shape/centroid.h>
 #include <libgeoda/gda_weights.h>
 #include <libgeoda/weights/GeodaWeight.h>
 #include <libgeoda/geofeature.h>
 #include <libgeoda/pg/utils.h>
-
 #include "postgeoda.h"
 #include "proxy.h"
 
