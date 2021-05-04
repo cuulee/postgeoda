@@ -16,7 +16,6 @@ extern "C" {
 #include <catalog/pg_type.h>
 #include <fmgr.h>
 #include <utils/numeric.h>
-#include <pgtypes_numeric.h>
 #include <windowapi.h>
 
 
