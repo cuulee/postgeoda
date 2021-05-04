@@ -145,6 +145,7 @@ Datum pg_queen_weights_window(PG_FUNCTION_ARGS) {
     if (context->isnull) {
         PG_RETURN_NULL();
     }
+    curpos = WinGetCurrentPosition(winobj);
 
     size_t buf_size = 0;
     buf_size += sizeof(uint32_t); // idx
@@ -284,6 +285,9 @@ Datum pg_rook_weights_window(PG_FUNCTION_ARGS) {
     if (context->isnull) {
         PG_RETURN_NULL();
     }
+
+    curpos = WinGetCurrentPosition(winobj);
+
     size_t buf_size = 0;
     buf_size += sizeof(uint32_t); // idx
     uint16_t num_nbrs = context->w->neighbors[curpos].num_nbrs;

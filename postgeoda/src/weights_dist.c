@@ -151,7 +151,7 @@ Datum pg_distance_weights_window(PG_FUNCTION_ARGS) {
         context->isdone = true;
 
         // free PGWeight
-        free_pgweight(w);
+        //free_pgweight(w);
 
         lwdebug(1, "Exit pg_distance_weights_window. done.");
     }
@@ -160,6 +160,7 @@ Datum pg_distance_weights_window(PG_FUNCTION_ARGS) {
         PG_RETURN_NULL();
     }
 
+    curpos = WinGetCurrentPosition(winobj);
     size_t buf_size = 0;
     buf_size += sizeof(uint32_t); // idx
     uint16_t num_nbrs = context->w->neighbors[curpos].num_nbrs;
@@ -335,6 +336,8 @@ Datum pg_kernel_weights_window(PG_FUNCTION_ARGS) {
     if (context->isnull) {
         PG_RETURN_NULL();
     }
+
+    curpos = WinGetCurrentPosition(winobj);
     size_t buf_size = 0;
     buf_size += sizeof(uint32_t); // idx
     uint16_t num_nbrs = context->w->neighbors[curpos].num_nbrs;
