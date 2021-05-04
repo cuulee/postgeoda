@@ -42,7 +42,6 @@ PG_MODULE_MAGIC;
 typedef struct {
     bool	isdone;
     bool	isnull;
-    bytea **result;
     PGWeight *w;
     /* variable length */
 } knn_context;
@@ -162,44 +161,44 @@ Datum pg_knn_weights_window(PG_FUNCTION_ARGS) {
 
     curpos = WinGetCurrentPosition(winobj);
 
-        size_t buf_size = 0;
-        buf_size += sizeof(uint32_t); // idx
-        uint16_t num_nbrs = context->w->neighbors[curpos].num_nbrs;
-        buf_size += sizeof(uint16_t); // num_nbrs
-        buf_size += sizeof(uint32_t) * num_nbrs;
-        if (context->w->w_type == 'w') {
-            buf_size += sizeof(float) * num_nbrs;
-        }
+    size_t buf_size = 0;
+    buf_size += sizeof(uint32_t); // idx
+    uint16_t num_nbrs = context->w->neighbors[curpos].num_nbrs;
+    buf_size += sizeof(uint16_t); // num_nbrs
+    buf_size += sizeof(uint32_t) * num_nbrs;
+    if (context->w->w_type == 'w') {
+        buf_size += sizeof(float) * num_nbrs;
+    }
 
-        uint8_t *buf = palloc(buf_size);
-        uint8_t *pos = buf; // retain the start pos
-        memcpy(buf, &(context->w->neighbors[curpos].idx), sizeof(uint32_t)); // copy idx
+    uint8_t *buf = palloc(buf_size);
+    uint8_t *pos = buf; // retain the start pos
+    memcpy(buf, &(context->w->neighbors[curpos].idx), sizeof(uint32_t)); // copy idx
+    buf += sizeof(uint32_t);
+
+    memcpy(buf, &num_nbrs, sizeof(uint16_t)); // copy n_nbrs
+    buf += sizeof(uint16_t);
+
+    for (size_t j = 0; j < num_nbrs; ++j) { // copy nbr_id
+        memcpy(buf, &context->w->neighbors[curpos].nbrId[j], sizeof(uint32_t));
         buf += sizeof(uint32_t);
+    }
 
-        memcpy(buf, &num_nbrs, sizeof(uint16_t)); // copy n_nbrs
-        buf += sizeof(uint16_t);
-
-        for (size_t j = 0; j < num_nbrs; ++j) { // copy nbr_id
-            memcpy(buf, &context->w->neighbors[curpos].nbrId[j], sizeof(uint32_t));
-            buf += sizeof(uint32_t);
+    if (context->w->w_type == 'w') {
+        for (size_t j = 0; j < num_nbrs; ++j) { // copy nbr_weight
+            memcpy(buf, &context->w->neighbors[curpos].nbrWeight[j], sizeof(float));
+            buf += sizeof(float);
         }
+    }
 
-        if (context->w->w_type == 'w') {
-            for (size_t j = 0; j < num_nbrs; ++j) { // copy nbr_weight
-                memcpy(buf, &context->w->neighbors[curpos].nbrWeight[j], sizeof(float));
-                buf += sizeof(float);
-            }
-        }
+    // copy to bytea type
+    bytea *result = palloc(buf_size + VARHDRSZ);
+    SET_VARSIZE(result, buf_size+VARHDRSZ);
+    memcpy(VARDATA(result), pos, buf_size);
 
-        // copy to bytea type
-        bytea *result = palloc(buf_size + VARHDRSZ);
-        SET_VARSIZE(result, buf_size+VARHDRSZ);
-        memcpy(VARDATA(result), pos, buf_size);
+    // clean
+    pfree(pos);
 
-        // clean
-        pfree(pos);
-
-        PG_RETURN_BYTEA_P(result);
+    PG_RETURN_BYTEA_P(result);
 }
 
 /**
@@ -312,14 +311,14 @@ Datum pg_knn_weights_sub_window(PG_FUNCTION_ARGS) {
 
         // create weights
         PGWeight* w = create_knn_weights_sub(fids, geoms, k, start, end, power, is_inverse, is_arc, is_mile);
-        bytea **result = weights_to_bytea_array(w);
+        //bytea **result = weights_to_bytea_array(w);
 
         // Safe the result
-        context->result = result;
+        context->w = w;
         context->isdone = true;
 
         // free PGWeight
-        free_pgweight(w);
+        //free_pgweight(w);
 
         lwdebug(1, "Exit pg_knn_weights_sub_window. done.");
     }
@@ -329,7 +328,44 @@ Datum pg_knn_weights_sub_window(PG_FUNCTION_ARGS) {
     }
 
     curpos = WinGetCurrentPosition(winobj);
-    PG_RETURN_BYTEA_P(context->result[curpos]);
+    size_t buf_size = 0;
+    buf_size += sizeof(uint32_t); // idx
+    uint16_t num_nbrs = context->w->neighbors[curpos].num_nbrs;
+    buf_size += sizeof(uint16_t); // num_nbrs
+    buf_size += sizeof(uint32_t) * num_nbrs;
+    if (context->w->w_type == 'w') {
+        buf_size += sizeof(float) * num_nbrs;
+    }
+
+    uint8_t *buf = palloc(buf_size);
+    uint8_t *pos = buf; // retain the start pos
+    memcpy(buf, &(context->w->neighbors[curpos].idx), sizeof(uint32_t)); // copy idx
+    buf += sizeof(uint32_t);
+
+    memcpy(buf, &num_nbrs, sizeof(uint16_t)); // copy n_nbrs
+    buf += sizeof(uint16_t);
+
+    for (size_t j = 0; j < num_nbrs; ++j) { // copy nbr_id
+        memcpy(buf, &context->w->neighbors[curpos].nbrId[j], sizeof(uint32_t));
+        buf += sizeof(uint32_t);
+    }
+
+    if (context->w->w_type == 'w') {
+        for (size_t j = 0; j < num_nbrs; ++j) { // copy nbr_weight
+            memcpy(buf, &context->w->neighbors[curpos].nbrWeight[j], sizeof(float));
+            buf += sizeof(float);
+        }
+    }
+
+    // copy to bytea type
+    bytea *result = palloc(buf_size + VARHDRSZ);
+    SET_VARSIZE(result, buf_size+VARHDRSZ);
+    memcpy(VARDATA(result), pos, buf_size);
+
+    // clean
+    pfree(pos);
+
+    PG_RETURN_BYTEA_P(result);
 }
 
 /**
@@ -460,10 +496,10 @@ Datum pg_kernel_knn_weights_window(PG_FUNCTION_ARGS) {
         double bandwidth = 0;
         PGWeight* w = create_kernel_knn_weights(fids, geoms, k, power, is_inverse, is_arc, is_mile,
                                                 kernel, bandwidth, adaptive_bandwidth, use_kernel_diagonals);
-        bytea **result = weights_to_bytea_array(w);
+        //bytea **result = weights_to_bytea_array(w);
 
         // Safe the result
-        context->result = result;
+        context->w = w;
         context->isdone = true;
 
         // free PGWeight
@@ -477,7 +513,44 @@ Datum pg_kernel_knn_weights_window(PG_FUNCTION_ARGS) {
     }
 
     curpos = WinGetCurrentPosition(winobj);
-    PG_RETURN_BYTEA_P(context->result[curpos]);
+    size_t buf_size = 0;
+    buf_size += sizeof(uint32_t); // idx
+    uint16_t num_nbrs = context->w->neighbors[curpos].num_nbrs;
+    buf_size += sizeof(uint16_t); // num_nbrs
+    buf_size += sizeof(uint32_t) * num_nbrs;
+    if (context->w->w_type == 'w') {
+        buf_size += sizeof(float) * num_nbrs;
+    }
+
+    uint8_t *buf = palloc(buf_size);
+    uint8_t *pos = buf; // retain the start pos
+    memcpy(buf, &(context->w->neighbors[curpos].idx), sizeof(uint32_t)); // copy idx
+    buf += sizeof(uint32_t);
+
+    memcpy(buf, &num_nbrs, sizeof(uint16_t)); // copy n_nbrs
+    buf += sizeof(uint16_t);
+
+    for (size_t j = 0; j < num_nbrs; ++j) { // copy nbr_id
+        memcpy(buf, &context->w->neighbors[curpos].nbrId[j], sizeof(uint32_t));
+        buf += sizeof(uint32_t);
+    }
+
+    if (context->w->w_type == 'w') {
+        for (size_t j = 0; j < num_nbrs; ++j) { // copy nbr_weight
+            memcpy(buf, &context->w->neighbors[curpos].nbrWeight[j], sizeof(float));
+            buf += sizeof(float);
+        }
+    }
+
+    // copy to bytea type
+    bytea *result = palloc(buf_size + VARHDRSZ);
+    SET_VARSIZE(result, buf_size+VARHDRSZ);
+    memcpy(VARDATA(result), pos, buf_size);
+
+    // clean
+    pfree(pos);
+
+    PG_RETURN_BYTEA_P(result);
 }
 
 /**
