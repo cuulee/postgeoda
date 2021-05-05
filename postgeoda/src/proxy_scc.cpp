@@ -70,7 +70,7 @@ int* redcap1_window(int k, int N, int n_vars, const double** r, const uint8_t** 
     std::vector<int> clusters = GenUtils::flat_2dclusters(N, cluster_ids);
 
     // results
-    int *result = (int*) palloc(sizeof(int*) * N);
+    int *result = (int*) malloc(sizeof(int*) * N);
     for (int i = 0; i < N; i++) {
         result[i] = clusters[i];
     }
@@ -131,7 +131,7 @@ int* redcap2_window(int k, int N, int n_vars, const double** r, const uint8_t** 
     std::vector<int> clusters = GenUtils::flat_2dclusters(N, cluster_ids);
 
     // results
-    int *result = (int*) palloc(sizeof(int*) * N);
+    int *result = (int*) malloc(sizeof(int*) * N);
     for (int i = 0; i < N; i++) {
         result[i] = clusters[i];
     }

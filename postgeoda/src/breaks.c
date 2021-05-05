@@ -180,7 +180,7 @@ Datum hinge30_finalfn(PG_FUNCTION_ARGS)
     }
 
     /* Clean up and return */
-    lwfree(breaks);
+    pfree(breaks);
 
     Oid elmtype = FLOAT8OID;
     int16 elmlen;
