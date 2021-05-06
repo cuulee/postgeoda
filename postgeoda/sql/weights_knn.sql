@@ -31,10 +31,16 @@ CREATE OR REPLACE FUNCTION kernel_knn_weights(anyelement, bytea, integer, charac
 AS 'MODULE_PATHNAME', 'pg_kernel_knn_weights_window'
     LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
 
--- kernel_knn_weights(gid, geom, 4, 'gaussian', power, is_inverse, is_arc, is_mile,
--- adaptive_bandwidth, use_kernel_diagonals)
-CREATE OR REPLACE FUNCTION kernel_knn_weights(anyelement, bytea, integer, character varying,
-    numeric, boolean, boolean, boolean, boolean, boolean)
+-- kernel_knn_weights(gid, geom, 4, 'gaussian', adaptive_bandwidth)
+CREATE OR REPLACE FUNCTION kernel_knn_weights(anyelement, bytea, integer, character varying, boolean)
+    RETURNS bytea
+AS 'MODULE_PATHNAME', 'pg_kernel_knn_weights_window'
+    LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
+
+-- kernel_knn_weights(gid, geom, 4, 'gaussian', adaptive_bandwidth, use_kernel_diagonals,
+-- power, is_inverse, is_arc, is_mile)
+CREATE OR REPLACE FUNCTION kernel_knn_weights(anyelement, bytea, integer, character varying, boolean,
+                                              boolean, numeric, boolean, boolean, boolean)
     RETURNS bytea
 AS 'MODULE_PATHNAME', 'pg_kernel_knn_weights_window'
     LANGUAGE 'c' IMMUTABLE STRICT WINDOW;

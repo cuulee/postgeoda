@@ -73,9 +73,10 @@ CREATE OR REPLACE FUNCTION kernel_weights(anyelement, bytea, float8, character v
 AS 'MODULE_PATHNAME', 'pg_kernel_weights_window'
     LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
 
--- kernel_weights(gid, geom, 103.0, 'gaussian', power, is_inverse, is_arc, is_mile, use_kernel_diagonals)
-CREATE OR REPLACE FUNCTION kernel_weights(anyelement, bytea, numeric, character varying,
-    numeric, boolean, boolean, boolean)
+-- kernel_weights(gid, geom, 103.0, 'gaussian', use_kernel_diagonals, power, is_inverse, is_arc, is_mile,
+-- use_kernel_diagonals)
+CREATE OR REPLACE FUNCTION kernel_weights(anyelement, bytea, float8, character varying, boolean,
+                                          float8, boolean, boolean)
     RETURNS bytea
 AS 'MODULE_PATHNAME', 'pg_kernel_weights_window'
     LANGUAGE 'c' IMMUTABLE STRICT WINDOW;

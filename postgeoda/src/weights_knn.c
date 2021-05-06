@@ -446,6 +446,20 @@ Datum pg_kernel_knn_weights_window(PG_FUNCTION_ARGS) {
         }
         arg_index += 1;
 
+        bool adaptive_bandwidth = false;
+        if (arg_index < PG_NARGS() ) {
+            lwdebug(1, "adaptive_bandwidth:");
+            adaptive_bandwidth = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
+        }
+        arg_index += 1;
+
+        bool use_kernel_diagonals = false;
+        if (arg_index < PG_NARGS()) {
+            lwdebug(1, "Get use_kernel_diagonals");
+            use_kernel_diagonals = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
+        }
+        arg_index += 1;
+
         double power = 1.0;
         if (arg_index < PG_NARGS() ) {
             lwdebug(1, "Get power");
@@ -474,20 +488,6 @@ Datum pg_kernel_knn_weights_window(PG_FUNCTION_ARGS) {
         if (arg_index < PG_NARGS() ) {
             lwdebug(1, "Get is_mile");
             is_mile = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
-        }
-        arg_index += 1;
-
-        bool adaptive_bandwidth = false;
-        if (arg_index < PG_NARGS() ) {
-            lwdebug(1, "Enter adaptive_bandwidth: %d-%d", arg_index, PG_NARGS());
-            adaptive_bandwidth = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
-        }
-        arg_index += 1;
-
-        bool use_kernel_diagonals = false;
-        if (arg_index < PG_NARGS()) {
-            lwdebug(1, "Get use_kernel_diagonals");
-            use_kernel_diagonals = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
         }
         arg_index += 1;
 

@@ -279,13 +279,20 @@ Datum pg_kernel_weights_window(PG_FUNCTION_ARGS) {
         if (!check_kernel(kernel)) {
             ereport(ERROR,
                     (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-                            errmsg("kernel has to be one of: triangular, uniform, epanechnikov, quartic, gaussian")));
+                            errmsg("kernel has to be one of: {triangular, uniform, epanechnikov, quartic, gaussian}")));
+        }
+        arg_index += 1;
+
+        bool use_kernel_diagonals = false;
+        if (arg_index < PG_NARGS()) {
+            lwdebug(1, "Get use_kernel_diagonals");
+            use_kernel_diagonals = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
         }
         arg_index += 1;
 
         double power = 1.0;
         if (arg_index < PG_NARGS()) {
-            power = DatumGetFloat4(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
+            power = DatumGetFloat8(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
             if (isnull || power <= 0) {
                 power = 1.0;
             }
@@ -309,13 +316,6 @@ Datum pg_kernel_weights_window(PG_FUNCTION_ARGS) {
             is_mile = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
         }
         arg_index += 1;
-
-        bool use_kernel_diagonals = false;
-        if (arg_index < PG_NARGS()) {
-            lwdebug(1, "Get use_kernel_diagonals");
-            use_kernel_diagonals = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
-            arg_index += 1;
-        }
 
         lwdebug(4, "pg_kernel_weights_window: create_distance_weights");
         // create weights
