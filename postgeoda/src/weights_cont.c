@@ -79,8 +79,8 @@ Datum pg_queen_weights_window(PG_FUNCTION_ARGS) {
         }
 
         // Read all the geometries from the partition window into a list
-        List *geoms;
-        List *fids;
+        List *geoms = 0;
+        List *fids = 0;
 
         for (size_t i = 0; i < N; i++) {
             // fid
@@ -219,8 +219,8 @@ Datum pg_rook_weights_window(PG_FUNCTION_ARGS) {
         }
 
         // Read all the geometries from the partition window into a list
-        List *geoms;
-        List *fids;
+        List *geoms = 0;
+        List *fids = 0;
 
         for (size_t i = 0; i < N; i++) {
             // fid
@@ -685,7 +685,7 @@ Datum bytea_to_geom_transfn(PG_FUNCTION_ARGS)
 		state = (CollectionBuildState*) PG_GETARG_POINTER(0);
 	}
 
-    LWGEOM* geom;
+    LWGEOM* geom = 0;
     int idx;
 
     /* Take a copy of the geometry into the aggregate context */
@@ -786,15 +786,13 @@ Datum weights_bytea_tojson(PG_FUNCTION_ARGS)
 
     lwdebug(5, "num_obs=%d", num_obs);
 
-    List *c_arr;
-    size_t n_arr = 0, i, j, c_len;
+    List *c_arr = 0;
+    size_t n_arr = 0, i, j;
     uint32_t nid;
     float nweights;
     char *c_nbrs;
 
     for (i = 0; i < num_obs; ++i) {
-        c_len = 0;
-
         // read idx
         memcpy(&idx, pos, sizeof(uint32_t));
         pos += sizeof(uint32_t);

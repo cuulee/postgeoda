@@ -614,8 +614,8 @@ Datum bytea_knn_geom_transfn(PG_FUNCTION_ARGS)
         state = (KnnCollectionState*) PG_GETARG_POINTER(0);
     }
 
-    LWGEOM* geom;
-    int idx;
+    LWGEOM* geom = 0;
+    int idx = 0;
 
     /* Take a copy of the geometry into the aggregate context */
     MemoryContext old = MemoryContextSwitchTo(aggcontext);

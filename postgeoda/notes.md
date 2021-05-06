@@ -536,3 +536,8 @@ Query returned successfully in 19 min 2 secs.
 ```bash
 ogr2ogr -f PostgreSQL PG:"host=localhost user=postgres dbname=test password=abc123" NETS2014_Misc.csv -oo AUTODETECT_TYPE=YES -oo X_POSSIBLE_NAMES=longitude -oo Y_POSSIBLE_NAMES=latitude
 ```
+
+CREATE INDEX nets_geom_idx ON nets2014_misc USING GIST (wkb_geometry);
+CREATE INDEX
+
+Query returned successfully in 1 hr 22 min.

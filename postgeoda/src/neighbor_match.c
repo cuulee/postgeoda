@@ -79,8 +79,8 @@ Datum pg_neighbor_match_test_window(PG_FUNCTION_ARGS) {
 
 
         // read data
-        List *geoms; // raw geometries
-        List *fids;
+        List *geoms = 0; // raw geometries
+        List *fids = 0;
         double **r = lwalloc(sizeof(double) * N);
 
         lwdebug(0, "Init pg_neighbor_match_test_window. N=%d", N);

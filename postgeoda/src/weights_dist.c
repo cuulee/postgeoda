@@ -77,8 +77,8 @@ Datum pg_distance_weights_window(PG_FUNCTION_ARGS) {
         }
 
         // read data
-        List *geoms;
-        List *fids;
+        List *geoms = 0;
+        List *fids = 0;
 
         for (size_t i = 0; i < N; i++) {
             // fid
@@ -233,8 +233,8 @@ Datum pg_kernel_weights_window(PG_FUNCTION_ARGS) {
         }
 
         // read data
-        List *geoms;
-        List *fids;
+        List *geoms = 0;
+        List *fids = 0;
 
         for (size_t i = 0; i < N; i++) {
             // fid
@@ -263,7 +263,7 @@ Datum pg_kernel_weights_window(PG_FUNCTION_ARGS) {
         // read arguments: dist_thres, power, is_inverse, is_arc, is_mile
         double dist_thres = 0.0;
         if (arg_index < PG_NARGS() ) {
-            dist_thres = DatumGetFloat4(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
+            dist_thres = DatumGetFloat8(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
             if (isnull || dist_thres <= 0) {
                 PG_RETURN_NULL();
             }
@@ -434,8 +434,8 @@ Datum bytea_to_geom_dist_transfn(PG_FUNCTION_ARGS)
         state = (WeightsCollectionState*) PG_GETARG_POINTER(0);
     }
 
-    LWGEOM* geom;
-    int idx;
+    LWGEOM* geom = 0;
+    int idx = 0;
 
     // Take a copy of the geometry into the aggregate context
     MemoryContext old = MemoryContextSwitchTo(aggcontext);

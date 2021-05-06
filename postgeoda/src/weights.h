@@ -44,14 +44,12 @@ static inline text *weights_to_json(bytea *bw) {
     lwdebug(1, "wtype=%s num_obs=%d", w_type, num_obs);
 
     List *c_arr;
-    size_t n_arr = 0, i, j, c_len;
+    size_t n_arr = 0, i, j;
     uint32_t nid;
     float nweights;
     char *c_nbrs;
 
     for (i = 0; i < num_obs; ++i) {
-        c_len = 0;
-
         // read idx
         memcpy(&idx, pos, sizeof(uint32_t));
         pos += sizeof(uint32_t);

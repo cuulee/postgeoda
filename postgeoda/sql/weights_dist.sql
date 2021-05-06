@@ -8,7 +8,7 @@
 --------------------------------------
 
 --------------------------------------
--- MAIN INTERFACE min_distthreshold(wkb_geometry)
+-- MAIN INTERFACE min_distthreshold(gid, wkb_geometry)
 --------------------------------------
 CREATE OR REPLACE FUNCTION bytea_to_geom_dist_transfn(
     internal, integer, bytea
@@ -68,7 +68,7 @@ AS 'MODULE_PATHNAME', 'pg_distance_weights_window'
 --------------------------------------
 -- MAIN INTERFACE kernel_weights(fid, wkb_geometry, 103.0, 'gaussian')
 --------------------------------------
-CREATE OR REPLACE FUNCTION kernel_weights(anyelement, bytea, numeric, character varying)
+CREATE OR REPLACE FUNCTION kernel_weights(anyelement, bytea, float8, character varying)
     RETURNS bytea
 AS 'MODULE_PATHNAME', 'pg_kernel_weights_window'
     LANGUAGE 'c' IMMUTABLE STRICT WINDOW;

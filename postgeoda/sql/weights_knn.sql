@@ -19,7 +19,7 @@ CREATE OR REPLACE FUNCTION knn_weights_sub(anyelement, bytea, integer, integer, 
 AS 'MODULE_PATHNAME', 'pg_knn_weights_sub_window'
     LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
 
--- knn_weights(gid, geom, 4, power, is_arc, is_mile)
+-- knn_weights(gid, geom, 4, power, is_inverse, is_arc, is_mile)
 CREATE OR REPLACE FUNCTION knn_weights(anyelement, bytea, integer, numeric, boolean, boolean)
     RETURNS bytea
 AS 'MODULE_PATHNAME', 'pg_knn_weights_window'
