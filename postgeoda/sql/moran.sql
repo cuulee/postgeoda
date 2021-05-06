@@ -19,7 +19,7 @@ CREATE OR REPLACE FUNCTION local_moran(anyelement, bytea)
 AS 'MODULE_PATHNAME', 'pg_local_moran_window'
     LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
 
-CREATE OR REPLACE FUNCTION local_moran(anyelement, bytea, integer, character varying, numeric, integer, integer)
+CREATE OR REPLACE FUNCTION local_moran(anyelement, bytea, integer, character varying, float8, integer, integer)
     RETURNS float8[]
 AS 'MODULE_PATHNAME', 'pg_local_moran_window'
     LANGUAGE 'c' IMMUTABLE STRICT WINDOW;

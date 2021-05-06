@@ -238,7 +238,7 @@ static inline void read_lisa_arguments(int arg_index, int pg_nargs, WindowObject
     arg_index += 1;
 
     if (arg_index < pg_nargs) {
-        args->significance_cutoff = DatumGetFloat4(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
+        args->significance_cutoff = DatumGetFloat8(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
         if (isnull || args->significance_cutoff <= 0) {
             args->significance_cutoff = 0.05;
         }

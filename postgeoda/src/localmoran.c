@@ -88,6 +88,8 @@ Datum pg_local_moran_window(PG_FUNCTION_ARGS) {
 
         read_lisa_arguments(arg_index, PG_NARGS(), winobj, &args);
 
+        lwdebug(1, "local_moran_window: sig_cutoff=%f.", args.significance_cutoff);
+
         double **result = local_moran_window(N, r, (const uint8_t**)w, w_size, args.permutations, args.method,
                                             args.significance_cutoff, args.cpu_threads, args.seed);
 
