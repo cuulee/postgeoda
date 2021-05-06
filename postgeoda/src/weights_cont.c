@@ -686,7 +686,7 @@ Datum bytea_to_geom_transfn(PG_FUNCTION_ARGS)
 	}
 
     LWGEOM* geom = 0;
-    int idx;
+    int idx = 0;
 
     /* Take a copy of the geometry into the aggregate context */
     MemoryContext old = MemoryContextSwitchTo(aggcontext);

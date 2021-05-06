@@ -78,8 +78,8 @@ Datum pg_knn_weights_window(PG_FUNCTION_ARGS) {
         }
 
         // read data
-        List *geoms;
-        List *fids;
+        List *geoms = 0;
+        List *fids = 0;
 
         for (size_t i = 0; i < N; i++) {
             // fid
@@ -233,8 +233,8 @@ Datum pg_knn_weights_sub_window(PG_FUNCTION_ARGS) {
         }
 
         // read data
-        List *geoms;
-        List *fids;
+        List *geoms = 0;
+        List *fids = 0;
 
         for (size_t i = 0; i < N; i++) {
             // fid
@@ -398,8 +398,8 @@ Datum pg_kernel_knn_weights_window(PG_FUNCTION_ARGS) {
         }
 
         // read data
-        List *geoms;
-        List *fids;
+        List *geoms = 0;
+        List *fids = 0;
 
         for (size_t i = 0; i < N; i++) {
             // fid
@@ -503,7 +503,7 @@ Datum pg_kernel_knn_weights_window(PG_FUNCTION_ARGS) {
         context->isdone = true;
 
         // free PGWeight
-        free_pgweight(w);
+        //free_pgweight(w);
 
         lwdebug(1, "Exit pg_kernel_knn_weights_window. done.");
     }
