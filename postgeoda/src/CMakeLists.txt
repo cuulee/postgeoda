@@ -54,6 +54,7 @@ set(SOURCES
         localmoran.c
         joincount.c
         localg.c
+        geary.c
         quantilelisa.c
         neighbor_match.c
         proxy.cpp

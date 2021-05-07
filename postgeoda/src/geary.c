@@ -38,6 +38,9 @@ Datum pg_local_geary_window(PG_FUNCTION_ARGS) {
     lisa_context *context;
     int64 curpos, rowcount;
 
+    Oid valsType = get_fn_expr_argtype(fcinfo->flinfo, 0);
+    check_if_numeric_type(valsType);
+
     rowcount = WinGetPartitionRowCount(winobj);
     context = (lisa_context *)WinGetPartitionLocalMemory(winobj,sizeof(lisa_context) + sizeof(int) * rowcount);
 
