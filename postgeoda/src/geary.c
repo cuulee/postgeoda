@@ -82,7 +82,7 @@ Datum pg_local_geary_window(PG_FUNCTION_ARGS) {
 
         // compute lisa
         lwdebug(1, "Enter pg_local_geary_window. N=%d", N);
-        double **result = local_geary_window(N, r, w, w_size, args.permutations, args.method,
+        double **result = local_geary_window(N, r, (const uint8_t**)w, w_size, args.permutations, args.method,
                 args.significance_cutoff, args.cpu_threads, args.seed);
 
         // Safe the result
