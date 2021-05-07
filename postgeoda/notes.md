@@ -542,4 +542,9 @@ CREATE INDEX
 
 Query returned successfully in 1 hr 22 min.
 
+
+* cartodb vm
+
 /etc/init.d/postgresql restart
+
+/var/log/postgresql-10-main.log

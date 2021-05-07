@@ -7,14 +7,14 @@
 --------------------------------------
 
 --------------------------------------
--- local_quantilelisa(5, 1, crm_prs, bytea)
+-- quantile_lisa(5, 1, crm_prs, bytea)
 --------------------------------------
-CREATE OR REPLACE FUNCTION local_quantilelisa(integer, integer, anyelement, bytea)
+CREATE OR REPLACE FUNCTION quantile_lisa(integer, integer, anyelement, bytea)
     RETURNS float8[]
 AS 'MODULE_PATHNAME', 'pg_local_quantilelisa_window'
     LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
 
-CREATE OR REPLACE FUNCTION local_quantilelisa(
+CREATE OR REPLACE FUNCTION quantile_lisa(
     integer, integer, anyelement, bytea, integer, character varying, float8, integer, integer
 )
     RETURNS float8[]
@@ -22,14 +22,14 @@ AS 'MODULE_PATHNAME', 'pg_local_quantilelisa_window'
     LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
 
 --------------------------------------
--- local_multiquantilelisa(ARRAY[5,5], ARRAY[1, 1], ARRAY[ep_pov, ep_pci], queen_w)
+-- multiquantile_lisa(ARRAY[5,5], ARRAY[1, 1], ARRAY[ep_pov, ep_pci], queen_w)
 --------------------------------------
-CREATE OR REPLACE FUNCTION local_multiquantilelisa(anyarray, anyarray, anyarray, bytea)
+CREATE OR REPLACE FUNCTION multiquantile_lisa(anyarray, anyarray, anyarray, bytea)
     RETURNS float8[]
 AS 'MODULE_PATHNAME', 'pg_local_multiquantilelisa_window'
     LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
 
-CREATE OR REPLACE FUNCTION local_multiquantilelisa(
+CREATE OR REPLACE FUNCTION multiquantile_lisa(
     anyarray, anyarray, anyarray, bytea, integer, character varying, float8, integer, integer
 )
     RETURNS float8[]

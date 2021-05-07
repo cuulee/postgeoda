@@ -48,14 +48,20 @@ AS 'MODULE_PATHNAME', 'pg_kernel_knn_weights_window'
 
 -- neighbor_match_test(ARRAY[ep_pov, ep_unem], geom, 4)
 -- pg_neighbor_match_test_window
-CREATE OR REPLACE FUNCTION neighbor_match_test(bytea, anyelement, integer)
+CREATE OR REPLACE FUNCTION neighbor_match_test(bytea, anyarray, integer)
+    RETURNS float8[]
+AS 'MODULE_PATHNAME', 'pg_neighbor_match_test_window'
+    LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
+
+CREATE OR REPLACE FUNCTION neighbor_match_test(bytea, anyarray, integer, character varying, character varying)
     RETURNS float8[]
 AS 'MODULE_PATHNAME', 'pg_neighbor_match_test_window'
     LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
 
 -- neighbor_match_test(ARRAY[ep_pov, ep_unem], 4, power, is_inverse, is_arc, is_mile, "standardize", "euclidean")
-CREATE OR REPLACE FUNCTION neighbor_match_test(bytea, anyelement, integer, numeric, boolean, boolean, boolean,
-    character varying, character varying)
+CREATE OR REPLACE FUNCTION neighbor_match_test(bytea, anyarray, integer,
+                                               character varying, character varying, float, boolean, boolean, boolean
+    )
     RETURNS float8[]
 AS 'MODULE_PATHNAME', 'pg_neighbor_match_test_window'
     LANGUAGE 'c' IMMUTABLE STRICT WINDOW;

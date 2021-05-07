@@ -132,6 +132,30 @@ Datum pg_neighbor_match_test_window(PG_FUNCTION_ARGS) {
         }
         arg_index += 1;
 
+        char* scale_method = 0;
+        if (arg_index < PG_NARGS()) {
+            VarChar *arg = (VarChar *)DatumGetVarCharPP(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
+            scale_method = (char *)VARDATA(arg);
+            if (!check_scale_method(scale_method)) {
+                ereport(ERROR,
+                        (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+                                errmsg("scaling method should be one of: 'raw', 'standardize', 'demean', 'mad', 'range_standardize', 'range_adjust'")));
+            }
+        }
+        arg_index += 1;
+
+        char* dist_type = 0;
+        if (arg_index < PG_NARGS()) {
+            VarChar *arg = (VarChar *)DatumGetVarCharPP(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
+            dist_type = (char *)VARDATA(arg);
+            if (!check_dist_type(dist_type)) {
+                ereport(ERROR,
+                        (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+                                errmsg("distance type should be one of: 'euclidean', 'manhattan'")));
+            }
+        }
+        arg_index += 1;
+
         // power
         double power = 1.0;
         if (arg_index < PG_NARGS()) {
@@ -160,29 +184,6 @@ Datum pg_neighbor_match_test_window(PG_FUNCTION_ARGS) {
         }
         arg_index += 1;
 
-        char* scale_method = 0;
-        if (arg_index < PG_NARGS()) {
-            VarChar *arg = (VarChar *)DatumGetVarCharPP(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
-            scale_method = (char *)VARDATA(arg);
-            if (!check_scale_method(scale_method)) {
-                ereport(ERROR,
-                        (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-                                errmsg("scaling method should be one of: 'raw', 'standardize', 'demean', 'mad', 'range_standardize', 'range_adjust'")));
-            }
-        }
-        arg_index += 1;
-
-        char* dist_type = 0;
-        if (arg_index < PG_NARGS()) {
-            VarChar *arg = (VarChar *)DatumGetVarCharPP(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
-            dist_type = (char *)VARDATA(arg);
-            if (!check_dist_type(dist_type)) {
-                ereport(ERROR,
-                        (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-                                errmsg("distance type should be one of: 'euclidean', 'manhattan'")));
-            }
-        }
-        arg_index += 1;
 
         double **result = neighbor_match_test_window(fids, geoms, k, arrayLength, N, (const double**)r,
                                                      power, is_inverse, is_arc, is_mile, scale_method, dist_type);
