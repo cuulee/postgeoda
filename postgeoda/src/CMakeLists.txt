@@ -61,6 +61,7 @@ set(SOURCES
         binweight.cpp
         proxy_joincount.cpp
         proxy_localg.cpp
+        proxy_localgeary.cpp
         proxy_quantilelisa.cpp
         proxy_breaks.cpp
         proxy_scc.cpp

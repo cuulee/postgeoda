@@ -14,7 +14,7 @@ CREATE OR REPLACE FUNCTION local_joincount(anyelement, bytea)
 AS 'MODULE_PATHNAME', 'pg_local_joincount_window'
     LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
 
-CREATE OR REPLACE FUNCTION local_joincount(anyelement, bytea, integer, character varying, numeric, integer, integer)
+CREATE OR REPLACE FUNCTION local_joincount(anyelement, bytea, integer, character varying, float8, integer, integer)
     RETURNS float8[]
 AS 'MODULE_PATHNAME', 'pg_local_joincount_window'
     LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
@@ -27,7 +27,7 @@ CREATE OR REPLACE FUNCTION local_bijoincount(anyelement, anyelement, bytea)
 AS 'MODULE_PATHNAME', 'pg_local_bijoincount_window'
     LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
 
-CREATE OR REPLACE FUNCTION local_bijoincount(anyelement, anyelement, bytea, integer, character varying, numeric, integer, integer)
+CREATE OR REPLACE FUNCTION local_bijoincount(anyelement, anyelement, bytea, integer, character varying, float8, integer, integer)
     RETURNS float8[]
 AS 'MODULE_PATHNAME', 'pg_local_bijoincount_window'
     LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
@@ -40,7 +40,7 @@ CREATE OR REPLACE FUNCTION local_multijoincount(anyarray, bytea)
 AS 'MODULE_PATHNAME', 'pg_local_multijoincount_window'
     LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
 
-CREATE OR REPLACE FUNCTION local_multijoincount(anyarray, bytea, integer, character varying, numeric, integer, integer)
+CREATE OR REPLACE FUNCTION local_multijoincount(anyarray, bytea, integer, character varying, float8, integer, integer)
     RETURNS float8[]
 AS 'MODULE_PATHNAME', 'pg_local_multijoincount_window'
     LANGUAGE 'c' IMMUTABLE STRICT WINDOW;

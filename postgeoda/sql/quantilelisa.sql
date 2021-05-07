@@ -15,7 +15,7 @@ AS 'MODULE_PATHNAME', 'pg_local_quantilelisa_window'
     LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
 
 CREATE OR REPLACE FUNCTION local_quantilelisa(
-    integer, integer, anyelement, bytea, integer, character varying, numeric, integer, integer
+    integer, integer, anyelement, bytea, integer, character varying, float8, integer, integer
 )
     RETURNS float8[]
 AS 'MODULE_PATHNAME', 'pg_local_quantilelisa_window'
@@ -30,7 +30,7 @@ AS 'MODULE_PATHNAME', 'pg_local_multiquantilelisa_window'
     LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
 
 CREATE OR REPLACE FUNCTION local_multiquantilelisa(
-    anyarray, anyarray, anyarray, bytea, integer, character varying, numeric, integer, integer
+    anyarray, anyarray, anyarray, bytea, integer, character varying, float8, integer, integer
 )
     RETURNS float8[]
 AS 'MODULE_PATHNAME', 'pg_local_multiquantilelisa_window'

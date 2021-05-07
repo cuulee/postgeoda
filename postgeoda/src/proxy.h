@@ -268,6 +268,13 @@ double** local_g_window(int N, const double* r, const uint8_t** bw, const size_t
 double** local_gstar_window(int N, const double* r, const uint8_t** bw, const size_t* w_size, int permutations,
                             char *method, double significance_cutoff, int cpu_threads, int seed);
 
+double** local_geary_window(int N, const double* r, const uint8_t** bw, const size_t* w_size, int permutations,
+                            char *method, double significance_cutoff, int cpu_threads, int seed);
+
+double** local_multigeary_window(int n_vars, int N, const double** r, const uint8_t** bw,
+                                        const size_t* w_size, int permutations, char *method,
+                                        double significance_cutoff, int cpu_threads, int seed);
+
 double** local_quantilelisa_window(int k, int quantile, int N, const double* r, const uint8_t** bw,
                                    const size_t* w_size, int permutations, char *method, double significance_cutoff,
                                    int cpu_threads, int seed);

@@ -14,7 +14,7 @@ CREATE OR REPLACE FUNCTION local_g(anyelement, bytea)
 AS 'MODULE_PATHNAME', 'pg_local_g_window'
     LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
 
-CREATE OR REPLACE FUNCTION local_g(anyelement, bytea, integer, character varying, numeric, integer, integer)
+CREATE OR REPLACE FUNCTION local_g(anyelement, bytea, integer, character varying, float8, integer, integer)
     RETURNS float8[]
 AS 'MODULE_PATHNAME', 'pg_local_g_window'
     LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
@@ -27,7 +27,7 @@ CREATE OR REPLACE FUNCTION local_gstar(anyelement, bytea)
 AS 'MODULE_PATHNAME', 'pg_local_gstar_window'
     LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
 
-CREATE OR REPLACE FUNCTION local_gstar(anyelement, bytea, integer, character varying, numeric, integer, integer)
+CREATE OR REPLACE FUNCTION local_gstar(anyelement, bytea, integer, character varying, float8, integer, integer)
     RETURNS float8[]
 AS 'MODULE_PATHNAME', 'pg_local_gstar_window'
     LANGUAGE 'c' IMMUTABLE STRICT WINDOW;

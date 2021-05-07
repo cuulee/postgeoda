@@ -541,3 +541,5 @@ CREATE INDEX nets_geom_idx ON nets2014_misc USING GIST (wkb_geometry);
 CREATE INDEX
 
 Query returned successfully in 1 hr 22 min.
+
+/etc/init.d/postgresql restart

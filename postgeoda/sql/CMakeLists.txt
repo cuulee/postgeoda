@@ -8,6 +8,7 @@ set(SOURCE_FILES
         weights_dist.sql
         moran.sql
         g.sql
+        geary.sql
         joincount.sql
         quantilelisa.sql
         breaks.sql
