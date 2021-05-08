@@ -14,6 +14,7 @@ set(SOURCE_FILES
         breaks.sql
         skater.sql
         redcap.sql
+        rates.sql
         )
 
 set(MODULE_PATHNAME "$libdir/postgeoda-${PROJECT_VERSION_MOD}")

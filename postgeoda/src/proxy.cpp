@@ -563,3 +563,10 @@ double** neighbor_match_test_window(List *lfids, List *lwgeoms, int k, int n_var
     lwdebug(1, "neighbor_match_test_window: return results.");
     return result;
 }
+
+double* excess_risk_window(int num_obs, double* e, double* b) {
+    double *r = (double*) malloc(sizeof(double) * num_obs);
+    std::vector<bool> undefs(num_obs, false);
+    GdaAlgs::RateSmoother_ExcessRisk(num_obs, b, e, r, undefs);
+    return r;
+}

@@ -234,10 +234,10 @@ AS 'MODULE_PATHNAME', 'weights_bytea_tojson'
 
 
 --------------------------------------
--- geoda_weights_astext(bytea)
+-- weights_astext(bytea)
 -- bytea of weights of ONE observation
 --------------------------------------
-CREATE OR REPLACE FUNCTION geoda_weights_astext(bytea)
+CREATE OR REPLACE FUNCTION weights_astext(bytea)
     RETURNS text
 AS 'MODULE_PATHNAME', 'weights_to_text'
     LANGUAGE c PARALLEL SAFE

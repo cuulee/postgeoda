@@ -287,6 +287,8 @@ double** neighbor_match_test_window(List *lfids, List *lwgeoms, int k, int n_var
                                     double power, bool is_inverse, bool is_arc, bool is_mile,
                                     const char *scale_method, const char* dist_type);
 
+double* excess_risk_window(int num_obs, double* e, double* b);
+
 double* pg_hinge_aggregate(List *data, List *undefs, bool is_hinge15);
 
 double* pg_percentile_aggregate(List *data, List *undefs, int *n_breaks);

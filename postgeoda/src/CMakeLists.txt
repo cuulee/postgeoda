@@ -46,6 +46,7 @@ set(SOURCES
         ../../libgeoda/knn/kd_util.cpp
         ../../libgeoda/knn/perf.cpp
         breaks.c
+        rates.c
         skater.c
         redcap.c
         weights_cont.c
