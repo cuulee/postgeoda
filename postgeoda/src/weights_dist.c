@@ -135,7 +135,7 @@ Datum pg_distance_weights_window(PG_FUNCTION_ARGS) {
         }
         arg_index += 1;
 
-        bool is_mile = false;
+        bool is_mile = true;
         if (arg_index < PG_NARGS()) {
             is_mile = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
         }
@@ -311,7 +311,7 @@ Datum pg_kernel_weights_window(PG_FUNCTION_ARGS) {
         }
         arg_index += 1;
 
-        bool is_mile = false;
+        bool is_mile = true;
         if (arg_index < PG_NARGS()) {
             is_mile = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
         }

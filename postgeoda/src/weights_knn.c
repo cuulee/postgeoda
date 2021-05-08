@@ -135,7 +135,7 @@ Datum pg_knn_weights_window(PG_FUNCTION_ARGS) {
         }
         arg_index += 1;
 
-        bool is_mile = false;
+        bool is_mile = true;
         if (arg_index < PG_NARGS()) {
             is_mile = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
         }
@@ -303,7 +303,7 @@ Datum pg_knn_weights_sub_window(PG_FUNCTION_ARGS) {
         }
         arg_index += 1;
 
-        bool is_mile = false;
+        bool is_mile = true;
         if (arg_index < PG_NARGS()) {
             is_mile = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
         }
@@ -484,7 +484,7 @@ Datum pg_kernel_knn_weights_window(PG_FUNCTION_ARGS) {
         }
         arg_index += 1;
 
-        bool is_mile = false;
+        bool is_mile = true;
         if (arg_index < PG_NARGS() ) {
             lwdebug(1, "Get is_mile");
             is_mile = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));

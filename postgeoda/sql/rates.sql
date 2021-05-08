@@ -28,6 +28,12 @@ CREATE OR REPLACE FUNCTION spatial_lag(anyelement, bytea)
 AS 'MODULE_PATHNAME', 'pg_spatial_lag'
     LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
 
+
+-- spatial_lag(variable, queen_w, is_binary, row_standardize, include_diagonal)
+CREATE OR REPLACE FUNCTION spatial_lag(anyelement, bytea, boolean, boolean, boolean)
+    RETURNS float8
+AS 'MODULE_PATHNAME', 'pg_spatial_lag'
+    LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
 --------------------------------------
 -- spatial_rate(variable, queen_w)
 --------------------------------------

@@ -291,7 +291,8 @@ double* excess_risk_window(int num_obs, double* e, double* b);
 
 double* eb_rate_window(int num_obs, double* e, double* b);
 
-double* spatial_lag_window(int N, const double* r, const uint8_t** bw, const size_t* w_size);
+double* spatial_lag_window(int N, const double* r, const uint8_t** bw, const size_t* w_size, bool is_binary,
+                           bool row_stand, bool inc_diag);
 
 double* spatial_rate_window(int N, double* e, double* b, const uint8_t** bw, const size_t* w_size);
 

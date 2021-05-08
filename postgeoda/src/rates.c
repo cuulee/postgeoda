@@ -222,10 +222,31 @@ Datum pg_spatial_lag(PG_FUNCTION_ARGS) {
             w_size[i] = VARSIZE_ANY_EXHDR(w_bytea);
         }
 
+        int arg_index = 2;
+
+        bool is_binary = true;
+        if (arg_index < PG_NARGS()) {
+            is_binary = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
+        }
+        arg_index += 1;
+
+
+        bool row_standardize = true;
+        if (arg_index < PG_NARGS()) {
+            row_standardize = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
+        }
+        arg_index += 1;
+
+        bool include_diagonal = false;
+        if (arg_index < PG_NARGS()) {
+            include_diagonal = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
+        }
+        arg_index += 1;
 
         // compute lisa
         lwdebug(1, "Enter pg_spatial_lag. N=%d", N);
-        double *result = spatial_lag_window(N, r, (const uint8_t**)w, w_size);
+        double *result = spatial_lag_window(N, r, (const uint8_t**)w, w_size, is_binary, row_standardize,
+                include_diagonal);
 
         // Safe the result
         context->result = result;

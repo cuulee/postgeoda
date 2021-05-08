@@ -178,7 +178,7 @@ Datum pg_neighbor_match_test_window(PG_FUNCTION_ARGS) {
         }
         arg_index += 1;
 
-        bool is_mile = false;
+        bool is_mile = true;
         if (arg_index < PG_NARGS()) {
             is_mile = DatumGetBool(WinGetFuncArgCurrent(winobj, arg_index, &isnull));
         }

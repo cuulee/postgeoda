@@ -578,7 +578,8 @@ double* eb_rate_window(int num_obs, double* e, double* b) {
     return r;
 }
 
-double* spatial_lag_window(int N, const double* r, const uint8_t** bw, const size_t* w_size)
+double* spatial_lag_window(int N, const double* r, const uint8_t** bw, const size_t* w_size, bool is_binary,
+        bool row_stand, bool inc_diag)
 {
     BinWeight* w = new BinWeight(N, bw, w_size); // weights in Window
 
@@ -592,8 +593,38 @@ double* spatial_lag_window(int N, const double* r, const uint8_t** bw, const siz
 
     lwdebug(1, "spatial_lag:");
     double* result = (double*)malloc(sizeof(double)* N);
+
     for (int i=0; i<N; ++i) {
-        result[i] = w->SpatialLag(i, data);
+        std::vector<long> nbrs = w->GetNeighbors(i);
+        std::vector<double> wvals = w->GetNeighborWeights(i);
+        double lag = 0;
+        if (is_binary || wvals.empty()) {
+            for (int j=0; j < nbrs.size(); ++j) {
+                if (nbrs[j] != i || inc_diag) {
+                    lag += r[nbrs[j]];
+                }
+            }
+            if (nbrs.empty() == false && row_stand) {
+                lag = lag / nbrs.size();
+            }
+        } else {
+            double sumW = 0;
+            for (int j=0; j < nbrs.size(); ++j) {
+                if (nbrs[j] != i || inc_diag) {
+                    sumW += wvals[j];
+                }
+            }
+            if (sumW ==0) {
+                lag = 0;
+            } else {
+                for (int j = 0; j < nbrs.size(); ++j) {
+                    if (nbrs[j] != i || inc_diag) {
+                        lag += r[nbrs[j]] * wvals[j] / sumW;
+                    }
+                }
+            }
+        }
+        result[i] = lag;
     }
     lwdebug(1, "spatial_lag: return results.");
     return result;
