@@ -109,7 +109,7 @@ Datum pg_skater1_window(PG_FUNCTION_ARGS) {
         // read arguments
         // k
         int k = DatumGetInt16(WinGetFuncArgCurrent(winobj, 0, &isnull));
-        if (isnull || k <= 0) {
+        if (isnull || k < 0) {
             elog(ERROR, "skater: k should be a positive integer number.");
         }
 
@@ -257,7 +257,7 @@ Datum pg_skater2_window(PG_FUNCTION_ARGS) {
         // read arguments
         // k
         int k = DatumGetInt16(WinGetFuncArgCurrent(winobj, 0, &isnull));
-        if (isnull || k <= 0) {
+        if (isnull || k < 0) {
             elog(ERROR, "skater: k should be a positive integer number.");
         }
 
