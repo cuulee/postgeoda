@@ -570,3 +570,61 @@ double* excess_risk_window(int num_obs, double* e, double* b) {
     GdaAlgs::RateSmoother_ExcessRisk(num_obs, b, e, r, undefs);
     return r;
 }
+
+double* eb_rate_window(int num_obs, double* e, double* b) {
+    double *r = (double*) malloc(sizeof(double) * num_obs);
+    std::vector<bool> undefs(num_obs, false);
+    GdaAlgs::RateSmoother_EBS(num_obs, b, e, r, undefs);
+    return r;
+}
+
+double* spatial_lag_window(int N, const double* r, const uint8_t** bw, const size_t* w_size)
+{
+    BinWeight* w = new BinWeight(N, bw, w_size); // weights in Window
+
+    std::vector<double> data(N, 0);
+    std::vector<bool> undefs(N, true);
+
+    for (int i=0; i<N; ++i) {
+        data[i] = r[i];
+        undefs[i] = false;
+    }
+
+    lwdebug(1, "spatial_lag:");
+    double* result = (double*)malloc(sizeof(double)* N);
+    for (int i=0; i<N; ++i) {
+        result[i] = w->SpatialLag(i, data);
+    }
+    lwdebug(1, "spatial_lag: return results.");
+    return result;
+}
+
+double* spatial_rate_window(int N, double* e, double* b, const uint8_t** bw, const size_t* w_size)
+{
+    BinWeight* w = new BinWeight(N, bw, w_size); // weights in Window
+
+    std::vector<bool> undefs(N, false);
+
+    lwdebug(1, "spatial_rate_window:");
+    double* result = (double*)malloc(sizeof(double)* N);
+
+    GdaAlgs::RateSmoother_SRS(N, w, b, e, result, undefs);
+
+    lwdebug(1, "spatial_rate_window: return results.");
+    return result;
+}
+
+double* spatial_eb_window(int N, double* e, double* b, const uint8_t** bw, const size_t* w_size)
+{
+    BinWeight* w = new BinWeight(N, bw, w_size); // weights in Window
+
+    std::vector<bool> undefs(N, false);
+
+    lwdebug(1, "spatial_eb_window:");
+    double* result = (double*)malloc(sizeof(double)* N);
+
+    GdaAlgs::RateSmoother_SEBS(N, w, b, e, result, undefs);
+
+    lwdebug(1, "spatial_eb_window: return results.");
+    return result;
+}
