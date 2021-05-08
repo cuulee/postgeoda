@@ -549,9 +549,9 @@ double** neighbor_match_test_window(List *lfids, List *lwgeoms, int k, int n_var
     std::vector<std::vector<double> > nmt = gda_neighbor_match_test(w, k, data_arr, scale_method_str, dist_type_str);
 
     // results
-    double **result = (double **) palloc(sizeof(double*) * N);
+    double **result = (double **) malloc(sizeof(double*) * N);
     for (int i = 0; i < N; i++) {
-        result[i] = (double *) palloc(sizeof(double) * 2);
+        result[i] = (double *) malloc(sizeof(double) * 2);
         result[i][0] = nmt[0][i];
         result[i][1] = nmt[1][i];
     }

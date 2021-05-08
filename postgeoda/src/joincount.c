@@ -166,7 +166,7 @@ Datum pg_local_bijoincount_window(PG_FUNCTION_ARGS) {
 
         lwdebug(0, "Init pg_local_bijoincount_window. N=%d", N);
 
-        for (size_t i = 0; i < N; i++) {
+        for (int i = 0; i < N; i++) {
             Datum arg1 = WinGetFuncArgInPartition(winobj, 0, i,
                                                  WINDOW_SEEK_HEAD, false, &isnull, &isout);
             if (isnull) {
@@ -190,6 +190,11 @@ Datum pg_local_bijoincount_window(PG_FUNCTION_ARGS) {
             w_size[i] = VARSIZE_ANY_EXHDR(w_bytea);
         }
 
+        for (int i=0; i< N; ++i) {
+            if (r1[i] == r2[i]) {
+                ereport(ERROR, (errmsg("local bivariate join count works only when two events cannot happen in the same location.")));
+            }
+        }
         // read arguments
         int arg_index = 3;
         lisa_arguments args = {999, 0, 0.05, 6, 123456789};
