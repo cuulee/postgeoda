@@ -32,6 +32,10 @@ If you prefer running spatial data analysis in Python, please check out [pygeoda
 If you prefer running spatial data analysis in R, please check out [rgeoda](https://geodacenter.github.io/rgeoda).
 ```
 
+## Documentation
+
+https://xunli.gitbook.io/postgeoda
+
 ## Version 0.0.1 
 
 * **1 Choropleth Mapping**
