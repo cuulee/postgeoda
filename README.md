@@ -1,42 +1,64 @@
-# libgeoda
-GeoDa C++ Library Project
+# PostGeoDa
 
-## 0.0.4
+_**Run spatial data analysis simply using SQL in your PostgreSQL database!!  🚀**_
 
-Here is a list of the new features in v0.0.4
+## Introduction
 
-* pca
-* mds (multi dimensional scaling)
-* multivariate local geary
-* multivariate local join count
-* quantile LISA
-* Add False Discovery Rate (FDR) in local spatial autocorrelation
-* NaturalBreaks
-* QuantileBreaks
-* Hinge15Breaks
-* Hinge30Breaks
-* PercentileBreaks
-* StddevBreaks
+PostGeoDa is a PostgreSQL extension for spatial data analysis. PostGeoDa is developed using C/C++ based on the [libgeoda](https://github.com/geodacenter/libgeoda) library. By utilizing and the database architecture of PostgreSQL and the spatial index in PostGIS, PostGeoDa has the ability to handle real big spatial data.
 
-## 0.0.3
+```sql
+-- Create Queen contiguity weights
+SELECT queen_weights(gid, the_geom) OVER() FROM natregimes;
 
-* Queen Weights
-* Rook Weights
-* Distance Weights
-* Kernel Weights
+-- Apply local Moran statistics
+SELECT local_moran(hr60, queen_weights) OVER() FROM natregimes;
 
-* Local Moran
-* Local G
-* Local G*
-* Local Geary
-* Local Join Count
+-- Apply spatial regionalization SKATER
+SELECT skater(ARRAY[hr60, dv60, ue60], queen_weights) OVER() FROM natregimes;
+```
 
-* SKATER
-* REDCAP
-* MAXP
+PostGeoDa is a free and open-sourced library. It is released under the GNU General Public License (GPLv2 or later). PostGeoDa is developed by [Xun Li ](https://lixun910.github.io)and [Luc Anselin](https://spatial.uchicago.edu/directory/luc-anselin-phd).
 
+## Why PostGeoDa? 🤔
 
-## 0.0.1
+* PostGeoDa is the first spatial data analysis extension of PostgreSQL to power spatial data services for cloud mapping platforms.
+* PostGeoDa offers many features of spatial data analysis that run efficiently in PostgreSQL, so there is no need to spend extra time transferring geometries over the network.
+* PostGeoDa has no dependencies. But it is designed to work with PostGIS to handle big spatial data.
+* PostGeoDa works seamlessly with the current SQL API frameworks e.g. CARTO [SQL API](https://carto.com/developers/sql-api/)
 
-Prototype for pygeoda 0.0.2 and rgeoda 0.0.1
-See pygeoda demos [here](https://github.com/lixun910/pygeoda) and rgeoda demos [here](https://github.com/lixun910/rgeoda)
+```
+If you prefer running spatial data analysis in browser, please check out [jsgeoda](https://www.npmjs.com/package/jsgeoda).  
+If you prefer running spatial data analysis in Python, please check out [pygeoda](https://geodacenter.github.io/pygeoda).  
+If you prefer running spatial data analysis in R, please check out [rgeoda](https://geodacenter.github.io/rgeoda).
+```
+
+## Version 0.0.1 
+
+* **1 Choropleth Mapping**
+    * Basic Mapping
+    * Rate Mapping
+    * Spatial Rate Mapping
+* **2 Spatial Weights**
+    * Contiguity-Based Weights
+    * Distance-Based Weights
+    * Kernel Weights
+* **3 Local Spatial Autocorrelation**
+    * Local Moran
+    * Local Geary
+    * Local Getis-Ord G
+    * Local Join Count
+    * Quantile LISA
+* **4 Local Spatial Autocorrelation - Multivariate**
+    * Local Neighbor Match Test
+    * Multivariate Local Geary
+    * Bivariate Local Join Count
+    * Multivariate  Local Join Count
+    * Multivariate Quantile LISA
+* **5 Spatial Clustering**
+    * SKATER
+    * REDCAP
+* **6 Cluster Analysis**
+    * HDBSCAN
+    * Fast K-Medoids
+
+### 
