@@ -1,0 +1,3 @@
+-- Installing: /usr/share/postgresql/10/extension/postgeoda.control
+-- Installing: /usr/share/postgresql/10/extension/postgeoda--0.0.1.sql
+-- Installing: /usr/lib/postgresql/10/lib/postgeoda-0.0.1.so
