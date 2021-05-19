@@ -2,6 +2,8 @@
 
 _**Run spatial data analysis simply using SQL in your PostgreSQL database!!  🚀**_
 
+![](https://repository-images.githubusercontent.com/234583470/1c636780-b816-11eb-8c61-3a5194f0131f)
+
 ## Introduction
 
 PostGeoDa is a PostgreSQL extension for spatial data analysis. PostGeoDa is developed using C/C++ based on the [libgeoda](https://github.com/geodacenter/libgeoda) library. By utilizing and the database architecture of PostgreSQL and the spatial index in PostGIS, PostGeoDa has the ability to handle real big spatial data.
