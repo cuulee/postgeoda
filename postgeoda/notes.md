@@ -453,6 +453,14 @@ WHEN womenowned = 'Y' THEN 1 ELSE 0 END
 UPDATE 60061744
 Query returned successfully in 14 min 16 secs.
 
+CREATE TABLE nets_women AS(
+SELECT ogc_fid, CASE WHEN womenowned = 'Y' THEN 1 ELSE 0 END AS women FROM nets2014_misc;
+)
+
+SELECT 56861745
+
+Query returned successfully in 1 min 56 secs.
+
 
 ```SQL
 CREATE INDEX nets_geom_idx ON nets2014_misc USING GIST (geom);
@@ -530,6 +538,9 @@ CREATE INDEX nnfid4_idx ON tmp4_10nn (ogc_fid)
 ```
 SELECT 39320891
 Query returned successfully in 19 min 2 secs.
+
+
+10:36 11:15  39 mins  56861745
 
 * Import data
 

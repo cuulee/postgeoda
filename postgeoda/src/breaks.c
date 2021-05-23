@@ -134,7 +134,7 @@ Datum hinge15_finalfn(PG_FUNCTION_ARGS)
     double *breaks = pg_hinge_aggregate(p->data, p->undefs, true);
 
     /* Prepare the PgSQL text return type */
-    Datum elems[nelems];
+    Datum *elems = (Datum*)palloc(nelems * sizeof(Datum));
     for (int i=0; i<nelems; ++i) {
         elems[i] = Float8GetDatum(breaks[i]);
     }
@@ -174,7 +174,7 @@ Datum hinge30_finalfn(PG_FUNCTION_ARGS)
     double *breaks = pg_hinge_aggregate(data, p->undefs, false);
 
     /* Prepare the PgSQL text return type */
-    Datum elems[nelems];
+    Datum *elems = (Datum*)palloc(nelems * sizeof(Datum));
     for (int i=0; i<nelems; ++i) {
         elems[i] = Float8GetDatum(breaks[i]);
     }
@@ -213,7 +213,7 @@ Datum percentile_finalfn(PG_FUNCTION_ARGS)
     double *breaks = pg_percentile_aggregate(data, p->undefs, &nelems);
 
     /* Prepare the PgSQL text return type */
-    Datum elems[nelems];
+    Datum *elems = (Datum*)palloc(nelems * sizeof(Datum));
     for (int i=0; i<nelems; ++i) {
         elems[i] = Float8GetDatum(breaks[i]);
     }
@@ -253,7 +253,7 @@ Datum stddev_finalfn(PG_FUNCTION_ARGS)
     double *breaks = pg_stddev_aggregate(data, p->undefs, &nelems);
 
     /* Prepare the PgSQL text return type */
-    Datum elems[nelems];
+    Datum *elems = (Datum*)palloc(nelems * sizeof(Datum));
     for (int i=0; i<nelems; ++i) {
         elems[i] = Float8GetDatum(breaks[i]);
     }
@@ -293,7 +293,7 @@ Datum quantile_finalfn(PG_FUNCTION_ARGS)
     double *breaks = pg_quantile_aggregate(data, p->undefs, p->k);
 
     /* Prepare the PgSQL text return type */
-    Datum elems[nelems];
+    Datum *elems = (Datum*)palloc(nelems * sizeof(Datum));
     for (int i=0; i<nelems; ++i) {
         elems[i] = Float8GetDatum(breaks[i]);
     }
@@ -332,7 +332,7 @@ Datum naturalbreaks_finalfn(PG_FUNCTION_ARGS)
     double *breaks = pg_naturalbreaks_aggregate(data, p->undefs, p->k);
 
     /* Prepare the PgSQL text return type */
-    Datum elems[nelems];
+    Datum *elems = (Datum*)palloc(nelems * sizeof(Datum));
     for (int i=0; i<nelems; ++i) {
         elems[i] = Float8GetDatum(breaks[i]);
     }

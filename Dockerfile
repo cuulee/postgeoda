@@ -1,32 +1,29 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.10
 
 # Install dev environment
-RUN apt-get update
-RUN apt-get upgrade -y
+ENV DEBIAN_FRONTEND noninteractive
+RUN apt-get update && apt-get install -y -q apt-utils
 
-RUN apt-get install -y curl wget git libcurl4-gnutls-dev
-RUN apt-get install -y build-essential 
-RUN apt-get install -y cmake libc6-dev
-
-WORKDIR /usr/src/libgeoda
+RUN apt-get install -y -q \
+    build-essential \
+    autoconf \
+    automake \
+    cmake \
+    git \
+    postgresql-12 \
+    postgresql-contrib-12 \
+    postgresql-server-dev-12
 
 # Copy the current directory contents into the container at WORKDIR
 COPY . .
 
 # build libgeoda
-RUN \
-    git submodule update --init --recursive && \
-    rm -rf build && \
+RUN cd / && rm -rf postgeoda && \
+    git clone --recursive https://github.com/geodacenter/postgeoda && \
+    cd postgeoda && \
     mkdir build && \
-    cd build
-    cmake .. && \
-    make
-
-# build rgeoda
-
-# build pygeoda
-
-# launch jupyter server for rgeoda and pygeoda
-
-
+    cd build && \
+    cmake -DCMAKE_BUILD_TYPE=Release .. && \
+    make && \
+    make install
 
