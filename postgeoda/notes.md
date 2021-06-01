@@ -559,3 +559,71 @@ Query returned successfully in 1 hr 22 min.
 /etc/init.d/postgresql restart
 
 /var/log/postgresql-10-main.log
+
+carto_db_development=# \dt
+List of relations
+Schema |           Name            | Type  |  Owner   
+--------+---------------------------+-------+----------
+public | account_types             | table | postgres
+public | analyses                  | table | postgres
+public | api_keys                  | table | postgres
+public | assets                    | table | postgres
+public | automatic_geocodings      | table | postgres
+public | client_applications       | table | postgres
+public | connector_configurations  | table | postgres
+public | connector_providers       | table | postgres
+public | data_imports              | table | postgres
+public | external_data_imports     | table | postgres
+public | external_sources          | table | postgres
+public | feature_flags             | table | postgres
+public | feature_flags_users       | table | postgres
+public | geocodings                | table | postgres
+public | groups                    | table | postgres
+public | invitations               | table | postgres
+public | layer_node_styles         | table | postgres
+public | layers                    | table | postgres
+public | layers_maps               | table | postgres
+public | layers_user_tables        | table | postgres
+public | layers_users              | table | postgres
+public | ldap_configurations       | table | postgres
+public | legends                   | table | postgres
+public | likes                     | table | postgres
+public | logs                      | table | postgres
+public | mapcaps                   | table | postgres
+public | maps                      | table | postgres
+public | notifications             | table | postgres
+public | oauth_access_tokens       | table | postgres
+public | oauth_app_organizations   | table | postgres
+public | oauth_app_users           | table | postgres
+public | oauth_apps                | table | postgres
+public | oauth_authorization_codes | table | postgres
+public | oauth_nonces              | table | postgres
+public | oauth_refresh_tokens      | table | postgres
+public | oauth_tokens              | table | postgres
+public | organizations             | table | postgres
+public | overlays                  | table | postgres
+public | permissions               | table | postgres
+public | rate_limits               | table | postgres
+public | received_notifications    | table | postgres
+public | schema_migrations         | table | postgres
+public | search_tweets             | table | postgres
+public | shared_entities           | table | postgres
+public | snapshots                 | table | postgres
+public | spatial_ref_sys           | table | postgres
+public | states                    | table | postgres
+public | synchronization_oauths    | table | postgres
+public | synchronizations          | table | postgres
+public | tags                      | table | postgres
+public | templates                 | table | postgres
+public | user_creations            | table | postgres
+public | user_migration_exports    | table | postgres
+public | user_migration_imports    | table | postgres
+public | user_multifactor_auths    | table | postgres
+public | user_notifications        | table | postgres
+public | user_tables               | table | postgres
+public | users                     | table | postgres
+public | users_groups              | table | postgres
+public | visualization_backups     | table | postgres
+public | visualization_exports     | table | postgres
+public | visualizations            | table | postgres
+public | widgets                   | table | postgres

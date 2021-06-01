@@ -323,7 +323,7 @@ Datum pg_spatial_rate(PG_FUNCTION_ARGS) {
 
         // compute lisa
         lwdebug(1, "Enter pg_spatial_rate. N=%d", N);
-        double *result = excess_risk_window(N, e, b);
+        double *result = spatial_rate_window(N, e, b, (const uint8_t**)w, w_size);
 
         // Safe the result
         context->result = result;
