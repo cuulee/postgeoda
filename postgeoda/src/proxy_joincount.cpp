@@ -60,6 +60,46 @@ double** local_joincount_window(int N, const double* r, const uint8_t** bw, cons
     return result;
 }
 
+double** local_joincount_fast(int N, int NN, const double* r, const double* arr, const uint8_t** bw, const size_t* w_size, int permutations,
+                          char *method, double significance_cutoff, int cpu_threads, int seed)
+{
+    BinWeight* w = new BinWeight(N, NN, bw, w_size);
+    int num_obs = w->num_obs; // all observations!!
+    const std::vector<uint32_t>& fids = w->getFids(); // fids in query window
+
+    std::vector<double> data(num_obs, 0);
+    std::vector<bool> undefs(num_obs, true);
+
+    for (int i=0; i<NN; ++i) {
+        data[i] = arr[i];
+        undefs[i] = false;
+    }
+
+    std::string perm_method = "lookup";
+    if (method != 0) perm_method = method;
+
+    LISA* lisa = gda_localjoincount(w, data, undefs, significance_cutoff, cpu_threads, permutations, perm_method, seed);
+    const std::vector<double>& lisa_i = lisa->GetLISAValues();
+    const std::vector<double>& lisa_p = lisa->GetLocalSignificanceValues();
+    const std::vector<int>& lisa_c = lisa->GetClusterIndicators();
+
+    // results for query window
+    double **result = (double **) malloc(sizeof(double*) * N);
+    for (int i = 0; i < N; i++) {
+        result[i] = (double *) malloc(sizeof(double) * 3);
+        int fid = fids[i];
+        result[i][0] = lisa_i[fid];
+        result[i][1] = lisa_p[fid];
+        result[i][2] = lisa_c[fid];
+    }
+
+    // clean
+    delete lisa;
+
+    lwdebug(1, "local_joincount_fast: return results.");
+    return result;
+}
+
 double** local_bijoincount_window(int N, const double* r1, const double* r2, const uint8_t** bw, const size_t* w_size, int permutations,
                                   char *method, double significance_cutoff, int cpu_threads, int seed)
 {

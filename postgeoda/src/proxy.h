@@ -208,26 +208,15 @@ double** local_moran_window_bytea(int N, const int64* fids, const double* r, con
 double** local_moran_window(int N, const double* r, const uint8_t** bw, const size_t* w_size, int permutations,
                            char *method, double significance_cutoff, int cpu_threads, int seed);
 
-/**
- * pg_local_moran_fast()
- *
- * The local moran function used for Window SQL function local_moran_fast()
- *
- * @param val
- * @param bw
- * @param bw_size
- * @param num_obs
- * @param arr
- * @param permutations
- * @param rnd_seed
- * @return
- */
-Point* local_moran_fast(double val, const uint8_t* bw, size_t bw_size, int num_obs, const double* arr,
-                           int permutations, int rnd_seed);
+double** local_moran_fast(int N, int NN, const double* r, const double* arr, const uint8_t** bw, const size_t* w_size, int permutations,
+                          char *method, double significance_cutoff, int cpu_threads, int seed);
 
 
 double** local_joincount_window(int N, const double* r, const uint8_t** bw, const size_t* w_size, int permutations,
                                 char *method, double significance_cutoff, int cpu_threads, int seed);
+
+double** local_joincount_fast(int N, int NN, const double* r, const double* arr, const uint8_t** bw, const size_t* w_size, int permutations,
+                          char *method, double significance_cutoff, int cpu_threads, int seed);
 
 double** local_bijoincount_window(int N, const double* r1, const double* r2, const uint8_t** bw, const size_t* w_size,
                                   int permutations, char *method, double significance_cutoff, int cpu_threads,

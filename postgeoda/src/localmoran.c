@@ -144,81 +144,130 @@ Datum pg_local_moran_window(PG_FUNCTION_ARGS) {
  * @return
  */
 Datum pg_local_moran_fast(PG_FUNCTION_ARGS);
+
 PG_FUNCTION_INFO_V1(pg_local_moran_fast);
+Datum pg_local_moran_fast(PG_FUNCTION_ARGS) {
+    WindowObject winobj = PG_WINDOW_OBJECT();
+    lisa_context *context;
+    int64 curpos, rowcount;
 
-Datum pg_local_moran_fast(PG_FUNCTION_ARGS)
-{
-    lwdebug(1, "Enter pg_local_moran_fast.");
+    Oid valsType = get_fn_expr_argtype(fcinfo->flinfo, 0);
+    check_if_numeric_type(valsType);
 
-    if (PG_ARGISNULL(0) || PG_ARGISNULL(1) || PG_ARGISNULL(2) ) {
-        ereport(ERROR, (errmsg("Null arguments not accepted")));
+    rowcount = WinGetPartitionRowCount(winobj);
+    context = (lisa_context *)WinGetPartitionLocalMemory(winobj,sizeof(lisa_context) + sizeof(int) * rowcount);
+
+    if (!context->isdone) {
+        bool isnull, isout;
+
+        /* We also need a non-zero N */
+        int N = (int) WinGetPartitionRowCount(winobj);
+        if (N <= 0) {
+            context->isdone = true;
+            context->isnull = true;
+            PG_RETURN_NULL();
+        }
+
+        // read data
+        uint8_t **w = lwalloc(sizeof(uint8_t *) * N);
+        size_t *w_size = lwalloc(sizeof(size_t) * N);
+        double *r = lwalloc(sizeof(double) * N);
+
+        lwdebug(0, "Init pg_local_moran_fast. N=%d", N);
+
+        for (size_t i = 0; i < N; i++) {
+            Datum arg = WinGetFuncArgInPartition(winobj, 0, i,
+                                                 WINDOW_SEEK_HEAD, false, &isnull, &isout);
+            r[i] = get_numeric_val(valsType, arg);
+            Datum arg1 = WinGetFuncArgInPartition(winobj, 1, i,
+                                                  WINDOW_SEEK_HEAD, false, &isnull, &isout);
+            bytea *w_bytea = DatumGetByteaP(arg1); //shallow copy
+            //bytea *w_bytea = (bytea*)PG_DETOAST_DATUM_COPY(arg1);
+            uint8_t *w_val = (uint8_t *) VARDATA(w_bytea);
+            w[i] = w_val;
+            w_size[i] = VARSIZE_ANY_EXHDR(w_bytea);
+        }
+
+        // 3rd arg
+        ArrayType *array = DatumGetArrayTypeP(WinGetFuncArgCurrent(winobj, 2, &isnull));
+
+        if (ARR_NDIM(array) > 1) {
+            ereport(ERROR, (errmsg("One-dimesional arrays are required")));
+        }
+
+        Oid  valsType;
+        valsType = ARR_ELEMTYPE(array);
+        check_if_numeric_type(valsType);
+        int arr_size = (ARR_DIMS(array))[0];
+        lwdebug(0, "pg_local_moran_fast. array type=%d, size=%d", valsType, arr_size);
+        // get values from 3rd arg
+        int16 valsTypeWidth;
+        bool valsTypeByValue;
+        char valsTypeAlignmentCode;
+        bool *valsNullFlags;
+        Datum *valsContent;
+
+        get_typlenbyvalalign(valsType, &valsTypeWidth, &valsTypeByValue, &valsTypeAlignmentCode);
+
+        // Extract the array contents (as Datum objects).
+        deconstruct_array(array, valsType, valsTypeWidth, valsTypeByValue, valsTypeAlignmentCode,
+                          &valsContent, &valsNullFlags, &arr_size);
+
+        double *arr = lwalloc(sizeof(double) * arr_size);
+
+        for (size_t i=0; i<arr_size; ++i) {
+            arr[i] = get_numeric_val(valsType, valsContent[i]);
+        }
+
+        // read arguments
+        int arg_index = 3;
+        lisa_arguments args = {999, 0, 0.05, 6, 123456789};
+
+        read_lisa_arguments(arg_index, PG_NARGS(), winobj, &args);
+
+        lwdebug(1, "pg_local_moran_fast:N=%d, NN=%d, sig_cutoff=%f.", N, arr_size, args.significance_cutoff);
+
+        double **result = local_moran_fast(N, arr_size, r, arr, (const uint8_t**)w, w_size, args.permutations, args.method,
+                                             args.significance_cutoff, args.cpu_threads, args.seed);
+
+        // Safe the result
+        context->result = result;
+        context->isdone = true;
+
+        // clean
+        lwdebug(1, "Clean pg_local_moran_fast.");
+        lwfree(r);
+        lwfree(w_size);
+        lwfree(w);
+        lwfree(arr);
+
+        lwdebug(1, "Exit pg_local_moran_fast.");
     }
 
-    // 1st arg
-    Oid  valType = get_fn_expr_argtype(fcinfo->flinfo, 0);
-    check_if_numeric_type(valType);
-
-    Datum arg = PG_GETARG_DATUM(0);
-    double val = get_numeric_val(valType, arg);
-
-    lwdebug(1, "pg_local_moran_fast. first arg=%f", val);
-
-    // 2nd arg
-    bytea *w_bytea = (bytea*)PG_DETOAST_DATUM_COPY(PG_GETARG_DATUM(1));
-    uint8_t *w_val = (uint8_t *) VARDATA(w_bytea);
-    size_t bw_size = VARSIZE_ANY_EXHDR(w_bytea);
-
-    // 3rd arg
-    ArrayType *vals;
-    vals = PG_GETARG_ARRAYTYPE_P(2);
-
-    if (ARR_NDIM(vals) > 1) {
-        ereport(ERROR, (errmsg("One-dimesional arrays are required")));
-    }
-
-    Oid  valsType;
-    valsType = ARR_ELEMTYPE(vals);
-    check_if_numeric_type(valType);
-    int arr_size = (ARR_DIMS(vals))[0];
-
-    lwdebug(1, "pg_local_moran_fast. arr_size = %d", arr_size);
-
-    // get values from 3rd arg
-    int16 valsTypeWidth;
-    bool valsTypeByValue;
-    char valsTypeAlignmentCode;
-    bool *valsNullFlags;
-    Datum *valsContent;
-
-    get_typlenbyvalalign(valsType, &valsTypeWidth, &valsTypeByValue, &valsTypeAlignmentCode);
-
-    // Extract the array contents (as Datum objects).
-    deconstruct_array(vals, valsType, valsTypeWidth, valsTypeByValue, valsTypeAlignmentCode,
-                      &valsContent, &valsNullFlags, &arr_size);
-
-    double *arr = lwalloc(sizeof(double) * arr_size);
-
-    for (size_t i=0; i<arr_size; ++i) {
-        arr[i] = get_numeric_val(valsType, valsContent[i]);
-    }
-
-    // compute lisa
-    int permutations = 999;
-    int rnd_seed = 123456789;
-    Point *r = local_moran_fast(val, w_val, bw_size, arr_size, arr, permutations, rnd_seed);
-
-    // clean
-    PG_FREE_IF_COPY(w_bytea, 0);
-    lwfree(arr);
-
-    // return
-    if (r == NULL) {
-        ereport(ERROR, (errmsg("pg_local_moran_fast() error.")));
+    if (context->isnull)
         PG_RETURN_NULL();
-    }
 
-    PG_RETURN_POINT_P(r);
+    curpos = WinGetCurrentPosition(winobj);
+
+    // Wrap the results in a new PostgreSQL array object.
+    double *p = context->result[curpos];
+    Datum elems[3];
+    elems[0] = Float8GetDatum(p[0]); // double to Datum
+    elems[1] = Float8GetDatum(p[1]);
+    elems[2] = Float8GetDatum(p[2]);
+    free(p);
+
+    int nelems = 3;
+    Oid elmtype = FLOAT8OID;
+    int16 elmlen;
+    bool elmbyval;
+    char elmalign;
+    get_typlenbyvalalign(elmtype, &elmlen, &elmbyval, &elmalign);
+    ArrayType *array = construct_array(elems, nelems, elmtype, elmlen, elmbyval, elmalign);
+
+    PG_RETURN_ARRAYTYPE_P(array);
 }
+
 
 /**
  *  local_moran_window_bytea (This is going to be depreciated)

@@ -26,12 +26,18 @@ AS 'MODULE_PATHNAME', 'pg_local_moran_window'
 
 --------------------------------------
 -- local_moran_fast(crm_prs, bytea)
--- select "Crm_prs", wkb_geometry, Array(select "Crm_prs" from guerry) as abc FROM guerry;
+-- select "Crm_prs", wkb_geometry, Array(select "Crm_prs" from guerry order by ogc_fid) as abc FROM guerry;
 --------------------------------------
 CREATE OR REPLACE FUNCTION local_moran_fast(anyelement, bytea, anyarray)
-    RETURNS point
+    RETURNS float8[]
 AS 'MODULE_PATHNAME', 'pg_local_moran_fast'
-    LANGUAGE 'c' PARALLEL SAFE COST 1000;
+    LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
+
+CREATE OR REPLACE FUNCTION local_moran_fast(anyelement, bytea, anyarray, integer, character varying, float8, integer, integer)
+    RETURNS float8[]
+AS 'MODULE_PATHNAME', 'pg_local_moran_fast'
+    LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
+
 --------------------------------------
 -- local_moran_b(crm_prs, bytea)
 -- the weights should be passed as a whole in BYTEA format

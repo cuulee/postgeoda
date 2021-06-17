@@ -297,8 +297,6 @@ double** local_moran_window(int N, const double* r, const uint8_t** bw, const si
     int num_obs = w->num_obs; // number of observations in weights in the query Window, == N
     const std::vector<uint32_t>& fids = w->getFids(); // fids starts from 0
 
-    // construct data for observations that may or may NOT be in the Window
-    // for those not in the Window, they will be treated as undefined/null
     std::vector<double> data(num_obs, 0);
     std::vector<bool> undefs(num_obs, true);
 
@@ -347,114 +345,46 @@ double ThomasWangHashDouble(uint64_t key) {
     return 5.42101086242752217E-20 * key;
 }
 
-Point* local_moran_fast(double val, const uint8_t* bw, size_t bw_size, int num_obs, const double* vals,
-        int permutations, int rnd_seed)
+double** local_moran_fast(int N, int NN, const double* r, const double* arr, const uint8_t** bw, const size_t* w_size, int permutations,
+                            char *method, double significance_cutoff, int cpu_threads, int seed)
 {
-    if (num_obs < 1) return NULL;
+    BinWeight* w = new BinWeight(N, NN, bw, w_size);
+    int num_obs = w->num_obs; // all observations!!
+    const std::vector<uint32_t>& fids = w->getFids(); // fids in query window
 
-    // read id and neighbors
-    const uint8_t *pos = bw;
-    uint32_t idx, n_id=0;
-    uint16_t n_nbrs = 0;
+    std::vector<double> data(num_obs, 0);
+    std::vector<bool> undefs(num_obs, true);
 
-    // id
-    memcpy(&idx, pos, sizeof(int32_t));
-    pos += sizeof(uint32_t);
-    idx = idx -1;
-
-    // number of neighbors
-    memcpy(&n_nbrs, pos, sizeof(uint16_t));
-    pos += sizeof(uint16_t);
-
-    // standardize
-    std::vector<double> arr(num_obs, 0);
-    for (size_t i=0; i<num_obs; ++i) arr[i] = vals[i];
-    GenUtils::StandardizeData(arr);
-
-    lwdebug(6, "pg_local_moran_fast: idx=%d, val=%f, std_val=%f.", idx, val, arr[40]);
-
-    // reassign input val
-    val = arr[idx];
-
-    double lisa_i=0, lisa_p=0;
-    if (n_nbrs > 0) {
-        std::vector<uint32_t> nbr(n_nbrs);
-        std::vector<double> nbrWeight(n_nbrs, 1.0);
-
-        for (size_t j = 0; j < n_nbrs; ++j) {
-            // read neighbor id
-            memcpy(&n_id, pos, sizeof(uint32_t));
-            pos += sizeof(uint32_t);
-            nbr[j] = n_id - 1;
-            lwdebug(6, "pg_local_moran_fast: %d-th neighbor: %d, %f.", j, nbr[j], vals[nbr[j]]);
-        }
-        if (bw_size > (size_t)(pos - bw)) {
-            double n_weight = 1.0;
-            for (size_t j = 0; j < n_nbrs; ++j) {
-                // read neighbor weight
-                memcpy(&n_weight, pos, sizeof(float));
-                pos += sizeof(float);
-                nbrWeight[j] = n_weight;
-            }
-        }
-
-        // compute lisa
-        double sp_lag = 0;
-        for (size_t i=0; i<n_nbrs; ++i) {
-            sp_lag += arr[nbr[i]];
-            lwdebug(6, "pg_local_moran_fast: %d-th neighbor: %f.", nbr[i], arr[nbr[i]]);
-        }
-        sp_lag /= n_nbrs;
-        lisa_i = val * sp_lag;
-
-        // p-val
-        int seed_start = rnd_seed + idx;
-        int max_rand = num_obs-1;
-        GeoDaSet workPermutation(num_obs);
-        std::vector<double> permutedSA(permutations, 0);
-        for (size_t perm=0; perm<permutations; perm++) {
-            int rand=0, newRandom;
-            double rng_val;
-            while (rand < n_nbrs) {
-                rng_val = ThomasWangHashDouble(seed_start++) * max_rand;
-                newRandom = (int)(rng_val<0.0?ceil(rng_val - 0.5):floor(rng_val + 0.5));
-                if (newRandom != idx && !workPermutation.Belongs(newRandom) ) {
-                    workPermutation.Push(newRandom);
-                    rand++;
-                }
-            }
-            std::vector<int> permNeighbors(n_nbrs);
-            for (int cp=0; cp<n_nbrs; cp++) {
-                permNeighbors[cp] = workPermutation.Pop();
-            }
-            double permutedLag = 0;
-            for (int cp=0; cp<n_nbrs; cp++) {
-                int nb = permNeighbors[cp];
-                permutedLag += arr[nb];
-            }
-            permutedLag /= n_nbrs;
-            permutedSA[perm] = permutedLag * val;
-        }
-        uint64_t countLarger = 0;
-        for (size_t i=0; i<permutations; ++i) {
-            if (permutedSA[i] >= lisa_i) {
-                countLarger += 1;
-            }
-        }
-        // pick the smallest counts
-        if (permutations-countLarger <= countLarger) {
-            countLarger = permutations-countLarger;
-        }
-        lisa_p = (countLarger+1.0)/(permutations+1);
+    for (int i=0; i<NN; ++i) {
+        data[i] = arr[i];
+        undefs[i] = false;
     }
 
-    lwdebug(1, "local_moran_fast: complete");
+    //lwdebug(1, "local_moran_fast: [0]=%f,[1]=%f,[2]=%f.", r[0], r[1], r[2]);
+    //lwdebug(1, "local_moran_fast: [0]=%f,[1]=%f,[2]=%f.", data[0], data[1], data[2]);
+    std::string perm_method = "lookup";
+    if (method != 0) perm_method = method;
 
-    Point *r = (Point *) palloc(sizeof(Point));
+    LISA* lisa = gda_localmoran(w, data, undefs, significance_cutoff, cpu_threads, permutations, perm_method, seed);
+    const std::vector<double>& lisa_i = lisa->GetLISAValues();
+    const std::vector<double>& lisa_p = lisa->GetLocalSignificanceValues();
+    const std::vector<int>& lisa_c = lisa->GetClusterIndicators();
 
-    r->x = lisa_i;
-    r->y = lisa_p;
-    return r;
+    // results for query window
+    double **result = (double **) malloc(sizeof(double*) * N);
+    for (int i = 0; i < N; i++) {
+        result[i] = (double *) malloc(sizeof(double) * 3);
+        int fid = fids[i];
+        result[i][0] = lisa_i[fid];
+        result[i][1] = lisa_p[fid];
+        result[i][2] = lisa_c[fid];
+    }
+
+    // clean
+    delete lisa;
+
+    lwdebug(1, "local_moran_fast: return results.");
+    return result;
 }
 
 double** local_moran_window_bytea(int N, const int64* fids, const double* r, const uint8_t* bw)

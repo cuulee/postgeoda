@@ -64,6 +64,7 @@ class BinWeight : public GeoDaWeight {
     boost::unordered_map<uint32_t, BinElement*> w_dict;
 
     std::vector<uint32_t> fids;
+    std::vector<bool> mask;
 
 public:
     const std::vector<uint32_t> &getFids() const;
@@ -72,9 +73,11 @@ public:
     BinWeight() {}
     BinWeight(const uint8_t* bw);
     BinWeight(int N, const uint8_t** bw, const size_t* w_size);
+    BinWeight(int N, int NN, const uint8_t** bw, const size_t* w_size);
 
     virtual ~BinWeight();
 
+    virtual bool   IsMasked(int obs_idx) { return mask[obs_idx];}
     virtual bool   CheckNeighbor(int obs_idx, int nbr_idx);
     virtual const  std::vector<long> GetNeighbors(int obs_idx);
     virtual const  std::vector<double> GetNeighborWeights(int obs_idx);

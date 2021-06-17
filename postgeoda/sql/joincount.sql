@@ -20,6 +20,19 @@ AS 'MODULE_PATHNAME', 'pg_local_joincount_window'
     LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
 
 --------------------------------------
+-- local_joincount_fast(crm_prs, bytea)
+--------------------------------------
+CREATE OR REPLACE FUNCTION local_joincount_fast(anyelement, bytea, anyarray)
+    RETURNS float8[]
+AS 'MODULE_PATHNAME', 'pg_local_joincount_fast'
+    LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
+
+CREATE OR REPLACE FUNCTION local_joincount_fast(anyelement, bytea, anyarray, integer, character varying, float8, integer, integer)
+    RETURNS float8[]
+AS 'MODULE_PATHNAME', 'pg_local_joincount_fast'
+    LANGUAGE 'c' IMMUTABLE STRICT WINDOW;
+
+--------------------------------------
 -- local_bijoincount(crm_prs, litercy, bytea)
 --------------------------------------
 CREATE OR REPLACE FUNCTION local_bijoincount(anyelement, anyelement, bytea)

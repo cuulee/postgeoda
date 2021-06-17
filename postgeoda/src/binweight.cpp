@@ -57,10 +57,13 @@ size_t BinElement::getSize() {
     return nbr_ids.size();
 }
 
-
+/**
+ * Create a full binary weights object
+ *
+ * @param bw
+ */
 BinWeight::BinWeight(const uint8_t* bw)
 {
-
     const uint8_t *pos = bw; // start position
 
     // read w type from char
@@ -123,6 +126,8 @@ BinWeight::BinWeight(const uint8_t* bw)
         this->w_dict[idx] = gl;
     }
     this->GetNbrStats();
+
+    mask.resize(this->num_obs, true);
 }
 
 /**
@@ -140,7 +145,6 @@ BinWeight::BinWeight(int N, const uint8_t** bw, const size_t* w_size)
 
     // get fids from the Window
     for (size_t i=0; i<N; ++i)  {
-        BinElement *gl= new BinElement;
         const uint8_t *pos = bw[i];
         uint32_t fid;
         // idx
@@ -197,10 +201,77 @@ BinWeight::BinWeight(int N, const uint8_t** bw, const size_t* w_size)
         }
 
         this->w_dict[ fid_dict[fid] ] = gl;
-        this->fids.push_back(fid_dict[fid]);
+        this->fids.push_back(fid);
     }
 
     this->num_obs = N;
+    this->GetNbrStats();
+
+    mask.resize(this->num_obs, true);
+
+    lwdebug(1, "create_weights_from_barray(). sparsity=%f", this->GetSparsity());
+}
+
+/**
+ * Create binary weights for lisa fast (partition) algorithms.
+ *
+ * @param N  the number of rows in the query window
+ * @param NN  the number of observations (NN > N)
+ * @param bw
+ * @param w_size
+ */
+BinWeight::BinWeight(int N, int NN, const uint8_t** bw, const size_t* w_size)
+{
+    mask.resize(NN, false); // mask all observations first
+
+    for (size_t i=0; i<N; ++i)  {
+        BinElement *gl= new BinElement;
+        const uint8_t *pos = bw[i];
+
+        // idx
+        uint32_t fid;
+        memcpy(&fid, pos, sizeof(uint32_t));
+        pos += sizeof(uint32_t);
+
+        // number of neighbors
+        uint16_t n_nbrs;
+        memcpy(&n_nbrs, pos, sizeof(uint16_t));
+        pos += sizeof(uint16_t);
+
+        // read neighbor id
+        std::vector<long> nbr;
+        std::vector<bool> nbr_flag(n_nbrs, false);
+        uint32_t n_id;
+
+        for (size_t j=0; j<n_nbrs; ++j)  {
+            // read neighbor id
+            memcpy(&n_id, pos, sizeof(uint32_t));
+            pos += sizeof(uint32_t);
+            nbr.push_back(n_id-1); // ogc_fid starts from 1, so -1 here
+            nbr_flag[j] = true;
+        }
+        gl->setNbrIds(nbr);
+
+        // read neighbor weights, if needed
+        if (w_size[i] > (size_t)(pos - bw[i])) {
+            std::vector<double> nbrWeight;
+            float n_weight = 0;
+            for (size_t j = 0; j < n_nbrs; ++j) {
+                // read neighbor weight
+                memcpy(&n_weight, pos, sizeof(float));
+                pos += sizeof(float);
+                nbrWeight.push_back(n_weight);
+            }
+            gl->setNbrWeights(nbrWeight);
+        }
+
+        int k = fid - 1; // ogc_fid starts from 1, so -1 here
+        this->w_dict[k] = gl;
+        this->fids.push_back(k);
+        this->mask[k] = true;
+    }
+
+    this->num_obs = NN;
     this->GetNbrStats();
 
     lwdebug(1, "create_weights_from_barray(). sparsity=%f", this->GetSparsity());
