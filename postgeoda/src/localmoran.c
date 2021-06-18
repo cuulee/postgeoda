@@ -173,7 +173,7 @@ Datum pg_local_moran_fast(PG_FUNCTION_ARGS) {
         size_t *w_size = lwalloc(sizeof(size_t) * N);
         double *r = lwalloc(sizeof(double) * N);
 
-        lwdebug(0, "Init pg_local_moran_fast. N=%d", N);
+        lwdebug(1, "Init pg_local_moran_fast. N=%d", N);
 
         for (size_t i = 0; i < N; i++) {
             Datum arg = WinGetFuncArgInPartition(winobj, 0, i,

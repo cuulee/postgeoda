@@ -159,7 +159,7 @@ Datum pg_local_joincount_fast(PG_FUNCTION_ARGS) {
         size_t *w_size = lwalloc(sizeof(size_t) * N);
         double *r = lwalloc(sizeof(double) * N);
 
-        lwdebug(0, "Init pg_local_joincount_fast. N=%d", N);
+        lwdebug(1, "Init pg_local_joincount_fast. N=%d", N);
 
         for (size_t i = 0; i < N; i++) {
             Datum arg = WinGetFuncArgInPartition(winobj, 0, i,
@@ -191,7 +191,7 @@ Datum pg_local_joincount_fast(PG_FUNCTION_ARGS) {
         valsType = ARR_ELEMTYPE(array);
         check_if_numeric_type(valsType);
         int arr_size = (ARR_DIMS(array))[0];
-        lwdebug(0, "pg_local_moran_fast. array type=%d, size=%d", valsType, arr_size);
+        lwdebug(1, "pg_local_moran_fast. array type=%d, size=%d", valsType, arr_size);
         // get values from 3rd arg
         int16 valsTypeWidth;
         bool valsTypeByValue;

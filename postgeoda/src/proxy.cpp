@@ -360,8 +360,8 @@ double** local_moran_fast(int N, int NN, const double* r, const double* arr, con
         undefs[i] = false;
     }
 
-    //lwdebug(1, "local_moran_fast: [0]=%f,[1]=%f,[2]=%f.", r[0], r[1], r[2]);
-    //lwdebug(1, "local_moran_fast: [0]=%f,[1]=%f,[2]=%f.", data[0], data[1], data[2]);
+    lwdebug(1, "local_moran_fast: [0]=%f,[1]=%f,[2]=%f.", r[0], r[1], r[2]);
+    lwdebug(1, "local_moran_fast: [0]=%f,[1]=%f,[2]=%f.", data[0], data[1], data[2]);
     std::string perm_method = "lookup";
     if (method != 0) perm_method = method;
 

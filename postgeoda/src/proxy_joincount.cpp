@@ -63,6 +63,7 @@ double** local_joincount_window(int N, const double* r, const uint8_t** bw, cons
 double** local_joincount_fast(int N, int NN, const double* r, const double* arr, const uint8_t** bw, const size_t* w_size, int permutations,
                           char *method, double significance_cutoff, int cpu_threads, int seed)
 {
+    lwdebug(1, "local_joincount_fast: creating weights.");
     BinWeight* w = new BinWeight(N, NN, bw, w_size);
     int num_obs = w->num_obs; // all observations!!
     const std::vector<uint32_t>& fids = w->getFids(); // fids in query window
@@ -78,6 +79,7 @@ double** local_joincount_fast(int N, int NN, const double* r, const double* arr,
     std::string perm_method = "lookup";
     if (method != 0) perm_method = method;
 
+    lwdebug(1, "local_joincount_fast: call libgeoda.");
     LISA* lisa = gda_localjoincount(w, data, undefs, significance_cutoff, cpu_threads, permutations, perm_method, seed);
     const std::vector<double>& lisa_i = lisa->GetLISAValues();
     const std::vector<double>& lisa_p = lisa->GetLocalSignificanceValues();
