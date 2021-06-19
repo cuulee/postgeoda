@@ -246,7 +246,7 @@ AS lisa
 For brew installed postgresql:
 
 ```SQL
-pg_ctl -D /opt/homebrew/var/postgresql@11 start
+pg_ctl -D /opt/homebrew/var/postgresql@11 restart
 ```
 abc123 pwd
 

@@ -125,7 +125,7 @@ BinWeight::BinWeight(const uint8_t* bw)
 
         this->w_dict[idx] = gl;
     }
-    //this->GetNbrStats();
+    this->GetNbrStats();
 
     mask.resize(this->num_obs, true);
 }
@@ -205,7 +205,7 @@ BinWeight::BinWeight(int N, const uint8_t** bw, const size_t* w_size)
     }
 
     this->num_obs = N;
-    //this->GetNbrStats();
+    this->GetNbrStats();
 
     mask.resize(this->num_obs, true);
 
@@ -272,7 +272,7 @@ BinWeight::BinWeight(int N, int NN, const uint8_t** bw, const size_t* w_size)
     }
 
     this->num_obs = NN;
-    //this->GetNbrStats();
+    this->GetNbrStats();
 
     lwdebug(1, "create_weights_from_barray(). sparsity=%f", this->GetSparsity());
 }
@@ -354,9 +354,8 @@ void BinWeight::GetNbrStats() {
 
     if (num_obs > 0) mean_nbrs = sum_nnbrs / (double)num_obs;
 
-    std::sort(nnbrs_array.begin(), nnbrs_array.end());
-
     if (num_obs == nnbrs_array.size()) { // here we has an exception of _fast function
+        std::sort(nnbrs_array.begin(), nnbrs_array.end());
         if (num_obs % 2 == 0) {
             median_nbrs = (nnbrs_array[num_obs / 2 - 1] + nnbrs_array[num_obs / 2]) / 2.0;
         } else {

@@ -86,6 +86,7 @@ double** local_joincount_fast(int N, int NN, const double* r, const double* arr,
     const std::vector<int>& lisa_c = lisa->GetClusterIndicators();
 
     // results for query window
+    lwdebug(1, "local_joincount_fast: create results for query window.");
     double **result = (double **) malloc(sizeof(double*) * N);
     for (int i = 0; i < N; i++) {
         result[i] = (double *) malloc(sizeof(double) * 3);
