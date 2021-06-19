@@ -355,10 +355,12 @@ void BinWeight::GetNbrStats() {
 
     std::sort(nnbrs_array.begin(), nnbrs_array.end());
 
-    if (num_obs % 2 ==0) {
-        median_nbrs = (nnbrs_array[num_obs/2-1] + nnbrs_array[num_obs/2]) / 2.0;
-    } else {
-        median_nbrs = nnbrs_array[num_obs/2];
+    if (num_obs == nnbrs_array.size()) { // here we has an exception of _fast function
+        if (num_obs % 2 == 0) {
+            median_nbrs = (nnbrs_array[num_obs / 2 - 1] + nnbrs_array[num_obs / 2]) / 2.0;
+        } else {
+            median_nbrs = nnbrs_array[num_obs / 2];
+        }
     }
 }
 
