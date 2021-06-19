@@ -67,7 +67,7 @@ Datum pg_local_moran_window(PG_FUNCTION_ARGS) {
         size_t *w_size = lwalloc(sizeof(size_t) * N);
         double *r = lwalloc(sizeof(double) * N);
 
-        lwdebug(0, "Init local_moran_window. N=%d", N);
+        //lwdebug(0, "Init local_moran_window. N=%d", N);
 
         for (size_t i = 0; i < N; i++) {
             Datum arg = WinGetFuncArgInPartition(winobj, 0, i,
@@ -88,7 +88,7 @@ Datum pg_local_moran_window(PG_FUNCTION_ARGS) {
 
         read_lisa_arguments(arg_index, PG_NARGS(), winobj, &args);
 
-        lwdebug(1, "local_moran_window: sig_cutoff=%f.", args.significance_cutoff);
+        //lwdebug(1, "local_moran_window: sig_cutoff=%f.", args.significance_cutoff);
 
         double **result = local_moran_window(N, r, (const uint8_t**)w, w_size, args.permutations, args.method,
                                             args.significance_cutoff, args.cpu_threads, args.seed);
@@ -98,12 +98,12 @@ Datum pg_local_moran_window(PG_FUNCTION_ARGS) {
         context->isdone = true;
 
         // clean
-        lwdebug(1, "Clean local_moran_window.");
+        //lwdebug(1, "Clean local_moran_window.");
         lwfree(r);
         lwfree(w_size);
         lwfree(w);
 
-        lwdebug(1, "Exit local_moran_window.");
+        //lwdebug(1, "Exit local_moran_window.");
     }
 
     if (context->isnull)
@@ -173,7 +173,7 @@ Datum pg_local_moran_fast(PG_FUNCTION_ARGS) {
         size_t *w_size = lwalloc(sizeof(size_t) * N);
         double *r = lwalloc(sizeof(double) * N);
 
-        lwdebug(1, "Init pg_local_moran_fast. N=%d", N);
+        //lwdebug(1, "Init pg_local_moran_fast. N=%d", N);
 
         for (size_t i = 0; i < N; i++) {
             Datum arg = WinGetFuncArgInPartition(winobj, 0, i,
@@ -199,7 +199,7 @@ Datum pg_local_moran_fast(PG_FUNCTION_ARGS) {
         valsType = ARR_ELEMTYPE(array);
         check_if_numeric_type(valsType);
         int arr_size = (ARR_DIMS(array))[0];
-        lwdebug(0, "pg_local_moran_fast. array type=%d, size=%d", valsType, arr_size);
+        //lwdebug(1, "pg_local_moran_fast. array type=%d, size=%d", valsType, arr_size);
         // get values from 3rd arg
         int16 valsTypeWidth;
         bool valsTypeByValue;
@@ -225,7 +225,7 @@ Datum pg_local_moran_fast(PG_FUNCTION_ARGS) {
 
         read_lisa_arguments(arg_index, PG_NARGS(), winobj, &args);
 
-        lwdebug(1, "pg_local_moran_fast:N=%d, NN=%d, sig_cutoff=%f.", N, arr_size, args.significance_cutoff);
+        //lwdebug(1, "pg_local_moran_fast:N=%d, NN=%d, sig_cutoff=%f.", N, arr_size, args.significance_cutoff);
 
         double **result = local_moran_fast(N, arr_size, r, arr, (const uint8_t**)w, w_size, args.permutations, args.method,
                                              args.significance_cutoff, args.cpu_threads, args.seed);
@@ -235,13 +235,13 @@ Datum pg_local_moran_fast(PG_FUNCTION_ARGS) {
         context->isdone = true;
 
         // clean
-        lwdebug(1, "Clean pg_local_moran_fast.");
+        //lwdebug(1, "Clean pg_local_moran_fast.");
         lwfree(r);
         lwfree(w_size);
         lwfree(w);
         lwfree(arr);
 
-        lwdebug(1, "Exit pg_local_moran_fast.");
+        //lwdebug(1, "Exit pg_local_moran_fast.");
     }
 
     if (context->isnull)
@@ -338,7 +338,7 @@ Datum pg_local_moran_window_bytea(PG_FUNCTION_ARGS) {
         lwfree(r);
         PG_FREE_IF_COPY(bw, 0);
 
-        lwdebug(1, "Exit local_moran_window_bytea. free_lisa() done.");
+        //lwdebug(1, "Exit local_moran_window_bytea. free_lisa() done.");
     }
 
     if (context->isnull)

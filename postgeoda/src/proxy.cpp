@@ -348,6 +348,7 @@ double ThomasWangHashDouble(uint64_t key) {
 double** local_moran_fast(int N, int NN, const double* r, const double* arr, const uint8_t** bw, const size_t* w_size, int permutations,
                             char *method, double significance_cutoff, int cpu_threads, int seed)
 {
+    lwdebug(1, "local_moran_fast: creating weights.");
     BinWeight* w = new BinWeight(N, NN, bw, w_size);
     int num_obs = w->num_obs; // all observations!!
     const std::vector<uint32_t>& fids = w->getFids(); // fids in query window

@@ -125,7 +125,7 @@ BinWeight::BinWeight(const uint8_t* bw)
 
         this->w_dict[idx] = gl;
     }
-    this->GetNbrStats();
+    //this->GetNbrStats();
 
     mask.resize(this->num_obs, true);
 }
@@ -205,7 +205,7 @@ BinWeight::BinWeight(int N, const uint8_t** bw, const size_t* w_size)
     }
 
     this->num_obs = N;
-    this->GetNbrStats();
+    //this->GetNbrStats();
 
     mask.resize(this->num_obs, true);
 
@@ -272,7 +272,7 @@ BinWeight::BinWeight(int N, int NN, const uint8_t** bw, const size_t* w_size)
     }
 
     this->num_obs = NN;
-    this->GetNbrStats();
+    //this->GetNbrStats();
 
     lwdebug(1, "create_weights_from_barray(). sparsity=%f", this->GetSparsity());
 }
@@ -313,6 +313,7 @@ bool BinWeight::HasIsolates() {
 }
 
 void BinWeight::GetNbrStats() {
+    lwdebug(1, "BinWeight::GetNbrStats() start");
     // sparsity
     double empties = 0;
 
@@ -362,6 +363,8 @@ void BinWeight::GetNbrStats() {
             median_nbrs = nnbrs_array[num_obs / 2];
         }
     }
+
+    lwdebug(1, "BinWeight::GetNbrStats() end");
 }
 
 int BinWeight::GetNbrSize(int obs_idx) {

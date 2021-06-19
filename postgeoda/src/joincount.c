@@ -62,7 +62,7 @@ Datum pg_local_joincount_window(PG_FUNCTION_ARGS) {
         size_t *w_size = lwalloc(sizeof(size_t) * N);
         double *r = lwalloc(sizeof(double) * N);
 
-        lwdebug(0, "Init pg_local_joincount_window. N=%d", N);
+        //lwdebug(1, "Init pg_local_joincount_window. N=%d", N);
 
         for (size_t i = 0; i < N; i++) {
             Datum arg = WinGetFuncArgInPartition(winobj, 0, i,
@@ -159,7 +159,7 @@ Datum pg_local_joincount_fast(PG_FUNCTION_ARGS) {
         size_t *w_size = lwalloc(sizeof(size_t) * N);
         double *r = lwalloc(sizeof(double) * N);
 
-        lwdebug(1, "Init pg_local_joincount_fast. N=%d", N);
+        //lwdebug(1, "Init pg_local_joincount_fast. N=%d", N);
 
         for (size_t i = 0; i < N; i++) {
             Datum arg = WinGetFuncArgInPartition(winobj, 0, i,
@@ -191,7 +191,7 @@ Datum pg_local_joincount_fast(PG_FUNCTION_ARGS) {
         valsType = ARR_ELEMTYPE(array);
         check_if_numeric_type(valsType);
         int arr_size = (ARR_DIMS(array))[0];
-        lwdebug(1, "pg_local_moran_fast. array type=%d, size=%d", valsType, arr_size);
+        //lwdebug(1, "pg_local_moran_fast. array type=%d, size=%d", valsType, arr_size);
         // get values from 3rd arg
         int16 valsTypeWidth;
         bool valsTypeByValue;
@@ -225,13 +225,13 @@ Datum pg_local_joincount_fast(PG_FUNCTION_ARGS) {
         context->isdone = true;
 
         // Clean
-        lwdebug(1, "Clean pg_local_joincount_fast.");
+        //lwdebug(1, "Clean pg_local_joincount_fast.");
         lwfree(r);
         lwfree(w_size);
         lwfree(w);
         lwfree(arr);
 
-        lwdebug(1, "Exit pg_local_joincount_fast. free_lisa() done.");
+        //lwdebug(1, "Exit pg_local_joincount_fast. free_lisa() done.");
     }
 
     if (context->isnull)
@@ -293,7 +293,7 @@ Datum pg_local_bijoincount_window(PG_FUNCTION_ARGS) {
         double *r1 = lwalloc(sizeof(double) * N);
         double *r2 = lwalloc(sizeof(double) * N);
 
-        lwdebug(0, "Init pg_local_bijoincount_window. N=%d", N);
+        //lwdebug(1, "Init pg_local_bijoincount_window. N=%d", N);
 
         for (int i = 0; i < N; i++) {
             Datum arg1 = WinGetFuncArgInPartition(winobj, 0, i,
@@ -338,13 +338,13 @@ Datum pg_local_bijoincount_window(PG_FUNCTION_ARGS) {
         context->isdone = true;
 
         // Clean
-        lwdebug(1, "Clean pg_local_bijoincount_window.");
+        //lwdebug(1, "Clean pg_local_bijoincount_window.");
         lwfree(r1);
         lwfree(r2);
         lwfree(w_size);
         lwfree(w);
 
-        lwdebug(1, "Exit pg_local_bijoincount_window. free_lisa() done.");
+        //lwdebug(1, "Exit pg_local_bijoincount_window. free_lisa() done.");
     }
 
     if (context->isnull)
@@ -470,7 +470,7 @@ Datum pg_local_multijoincount_window(PG_FUNCTION_ARGS) {
         lwfree(w_size);
         lwfree(w);
 
-        lwdebug(1, "Exit pg_local_multijoincount_window. free_lisa() done.");
+        //lwdebug(1, "Exit pg_local_multijoincount_window. free_lisa() done.");
     }
 
     if (context->isnull)

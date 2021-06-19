@@ -60,7 +60,7 @@ Datum pg_local_geary_window(PG_FUNCTION_ARGS) {
         size_t *w_size = lwalloc(sizeof(size_t) * N);
         double *r = lwalloc(sizeof(double) * N);
 
-        lwdebug(0, "Init pg_local_g_window. N=%d", N);
+        //lwdebug(1, "Init pg_local_g_window. N=%d", N);
 
         for (size_t i = 0; i < N; i++) {
             Datum arg = WinGetFuncArgInPartition(winobj, 0, i,

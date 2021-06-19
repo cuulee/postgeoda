@@ -83,7 +83,7 @@ Datum pg_neighbor_match_test_window(PG_FUNCTION_ARGS) {
         List *fids = 0;
         double **r = lwalloc(sizeof(double) * N);
 
-        lwdebug(0, "Init pg_neighbor_match_test_window. N=%d", N);
+        //lwdebug(1, "Init pg_neighbor_match_test_window. N=%d", N);
 
         for (size_t i = 0; i < N; i++) {
             Datum arg_val = WinGetFuncArgInPartition(winobj, 1, i, WINDOW_SEEK_HEAD, false, &isnull, &isout);

@@ -74,7 +74,7 @@ Datum pg_excess_risk(PG_FUNCTION_ARGS) {
         double *e = lwalloc(sizeof(double) * N);
         double *b = lwalloc(sizeof(double) * N);
 
-        lwdebug(0, "Init pg_excess_risk. N=%d", N);
+        //lwdebug(1, "Init pg_excess_risk. N=%d", N);
 
         for (size_t i = 0; i < N; i++) {
             Datum arg = WinGetFuncArgInPartition(winobj, 0, i,
@@ -141,7 +141,7 @@ Datum pg_eb_rate(PG_FUNCTION_ARGS) {
         double *e = lwalloc(sizeof(double) * N);
         double *b = lwalloc(sizeof(double) * N);
 
-        lwdebug(0, "Init pg_excess_risk. N=%d", N);
+        //lwdebug(1, "Init pg_excess_risk. N=%d", N);
 
         for (size_t i = 0; i < N; i++) {
             Datum arg = WinGetFuncArgInPartition(winobj, 0, i,
@@ -207,7 +207,7 @@ Datum pg_spatial_lag(PG_FUNCTION_ARGS) {
         size_t *w_size = lwalloc(sizeof(size_t) * N);
         double *r = lwalloc(sizeof(double) * N);
 
-        lwdebug(0, "Init pg_spatial_lag. N=%d", N);
+        //lwdebug(1, "Init pg_spatial_lag. N=%d", N);
 
         for (size_t i = 0; i < N; i++) {
             Datum arg = WinGetFuncArgInPartition(winobj, 0, i,
@@ -303,7 +303,7 @@ Datum pg_spatial_rate(PG_FUNCTION_ARGS) {
         uint8_t **w = lwalloc(sizeof(uint8_t *) * N);
         size_t *w_size = lwalloc(sizeof(size_t) * N);
 
-        lwdebug(0, "Init pg_spatial_rate. N=%d", N);
+        //lwdebug(1, "Init pg_spatial_rate. N=%d", N);
 
         for (size_t i = 0; i < N; i++) {
             Datum arg = WinGetFuncArgInPartition(winobj, 0, i,
@@ -381,7 +381,7 @@ Datum pg_spatial_eb(PG_FUNCTION_ARGS) {
         uint8_t **w = lwalloc(sizeof(uint8_t *) * N);
         size_t *w_size = lwalloc(sizeof(size_t) * N);
 
-        lwdebug(0, "Init pg_spatial_eb. N=%d", N);
+        //lwdebug(1, "Init pg_spatial_eb. N=%d", N);
 
         for (size_t i = 0; i < N; i++) {
             Datum arg = WinGetFuncArgInPartition(winobj, 0, i,
