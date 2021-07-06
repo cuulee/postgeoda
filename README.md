@@ -2,7 +2,7 @@
 
 _**Run spatial data analysis simply using SQL in your PostgreSQL database!!  🚀**_
 
-![](https://repository-images.githubusercontent.com/234583470/1c636780-b816-11eb-8c61-3a5194f0131f)
+![](https://repository-images.githubusercontent.com/234583470/8b8d1f00-ddb6-11eb-8a3e-49c34ef1e6bc)
 
 ## Introduction
 
